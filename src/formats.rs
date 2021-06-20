@@ -31,6 +31,7 @@ impl IType {
     pub fn rs1(&self) -> u32 {
         self.0 >> 15 & 0b1_1111
     }
+    // TODO: sign extended immediate
     pub fn imm(&self) -> u32 {
         self.0 >> 20 & 0b1111_1111_1111
     }
@@ -53,10 +54,10 @@ impl SType {
     pub fn rs1(&self) -> u32 {
         self.0 >> 15 & 0b1_1111
     }
-
     pub fn rs2(&self) -> u32 {
         self.0 >> 20 & 0b1_1111
     }
+    // TODO: sign extended immediate
     pub fn imm(&self) -> u32 {
         (self.0 >> (25 - 5) & 0b1111_1110_0000) | (self.0 >> 6 & 0b0000_0001_1111)
     }
@@ -107,6 +108,7 @@ impl UType {
     pub fn rd(&self) -> u32 {
         self.0 >> 7 & 0b1_1111
     }
+    // TODO: sign extended immediate
     pub fn imm(&self) -> u32 {
         self.0 & 0b1111_1111_1111_1111_1111_0000_0000_0000
     }
@@ -123,6 +125,7 @@ impl JType {
     pub fn rd(&self) -> u32 {
         self.0 >> 6 & 0x1f
     }
+    // TODO: sign extended immediate
     pub fn imm(&self) -> u32 {
         (self.0 >> (31 - 20) & 0b1_0000_0000_0000_0000_0000)
             | (self.0 & 0b0_1111_1111_0000_0000_0000)

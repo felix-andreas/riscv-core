@@ -151,6 +151,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     let pc = registers[PC];
     let mut next_pc = pc + 4;
     let code = read_u32(&memory, pc);
+    print!("{:08x} ", code);
 
     // Instruction Decode
     let instruction = decode(code);
@@ -159,6 +160,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Execute
     let mut rd: Option<u32> = None;
     let mut rd_value = 0;
+    // TODO: sign extended immediate
     match instruction {
         // LUI
         Instruction::LUI(u_type) => {
@@ -263,6 +265,8 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(r_type.rd());
             rd_value = registers[r_type.rs1() as usize] & registers[r_type.rs2() as usize]
         }
+        // SYSTEM
+        Instruction::ECALL | Instruction::EBREAK => {}
         _ => {
             println!("instruction: {:?}", &instruction);
             panic!("This instruction is not implemented yet, and I don't know what to do bye bye!")
@@ -292,12 +296,16 @@ fn main() {
 
     let path = Path::new("riscv-tests/isa/rv32ui-v-add");
 
-    println!("\nStart of: {:?}", path);
+    println!("ELF file: {:?}", path);
+    println!(
+        "{:4} {:8} {:8} {:0}",
+        "STEP", "ADDRESS", "CODE", "INSTRUCTION"
+    );
     load_elf(&mut memory, path);
     registers[PC] = MEMORY_START as u32;
 
-    for i in 0..50 {
-        print!("{:4} {:4x} ", i, registers[PC]);
+    for i in 0..100 {
+        print!("{:4} {:8x} ", i, registers[PC]);
         step(&mut registers, &mut memory);
         if i == 32 {
             dump_registers(&registers);
