@@ -157,8 +157,8 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     println!("{:08x?}", &instruction);
 
     // Execute
-    let rd: Option<u32>;
-    let rd_value;
+    let mut rd: Option<u32> = None;
+    let mut rd_value = 0;
     match instruction {
         // LUI
         Instruction::LUI(u_type) => {
@@ -176,18 +176,92 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(j_type.rd());
             rd_value = pc + 4;
         }
-        // OP-IMM // TODO: use sign extended values
+        // OP-IMM
         Instruction::ADDI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = (i_type.imm() as i32 + i_type.rs1() as i32) as u32;
+            rd_value = registers[i_type.rs1() as usize] + i_type.imm();
         }
         Instruction::SLTI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = ((i_type.rs1() as i32) < (i_type.imm() as i32)) as u32;
+            rd_value = ((registers[i_type.rs1() as usize] as i32) < (i_type.imm() as i32)) as u32;
         }
         Instruction::SLTIU(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = (i_type.rs1() < i_type.imm()) as u32;
+            rd_value = (registers[i_type.rs1() as usize] < i_type.imm()) as u32;
+        }
+        Instruction::XORI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = registers[i_type.rs1() as usize] ^ i_type.imm();
+        }
+        Instruction::ORI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = registers[i_type.rs1() as usize] | i_type.imm();
+        }
+        Instruction::ANDI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = i_type.rs1() & i_type.imm();
+        }
+        Instruction::SLLI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = registers[i_type.rs1() as usize] << (i_type.imm() & 0b1111);
+        }
+        Instruction::SRLI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = registers[i_type.rs1() as usize] >> (i_type.imm() & 0b1111);
+        }
+        Instruction::SRAI(i_type) => {
+            rd = Some(i_type.rd());
+            // rust uses arithmetic right shift on signed integer types
+            rd_value =
+                ((registers[i_type.rs1() as usize] as i32) >> (i_type.imm() & 0b1111)) as u32;
+        }
+        // OP
+        Instruction::ADD(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = registers[r_type.rs1() as usize]
+                .overflowing_add(registers[r_type.rs2() as usize])
+                .0;
+        }
+        Instruction::SUB(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = registers[r_type.rs1() as usize] - registers[r_type.rs2() as usize]
+        }
+        Instruction::SLL(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value =
+                registers[r_type.rs1() as usize] << (registers[r_type.rs2() as usize] & 0b11111);
+        }
+        Instruction::SLT(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = ((registers[r_type.rs1() as usize] as i32)
+                < (registers[r_type.rs2() as usize] as i32)) as u32;
+        }
+        Instruction::SLTU(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = (registers[r_type.rs1() as usize] < registers[r_type.rs2() as usize]) as u32;
+        }
+        Instruction::XOR(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = registers[r_type.rs1() as usize] ^ registers[r_type.rs2() as usize]
+        }
+        Instruction::SRL(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value =
+                registers[r_type.rs1() as usize] >> (registers[r_type.rs2() as usize] & 0b11111);
+        }
+        Instruction::SRA(r_type) => {
+            rd = Some(r_type.rd());
+            // rust uses arithmetic right shift on signed integer types
+            rd_value = ((registers[r_type.rs1() as usize] as i32)
+                >> (registers[r_type.rs2() as usize] & 0b11111)) as u32;
+        }
+        Instruction::OR(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = registers[r_type.rs1() as usize] | registers[r_type.rs2() as usize]
+        }
+        Instruction::AND(r_type) => {
+            rd = Some(r_type.rd());
+            rd_value = registers[r_type.rs1() as usize] & registers[r_type.rs2() as usize]
         }
         _ => {
             println!("instruction: {:?}", &instruction);
