@@ -15,7 +15,7 @@ const PC: usize = 32;
 const MEMORY_SIZE: usize = 0x10000;
 const MEMORY_START: usize = 0x80000000;
 
-type Register = [u32; 33];
+type Registers = [u32; 33];
 type Memory = [u8; MEMORY_SIZE];
 
 fn read_u32(memory: &Memory, address: u32) -> u32 {
@@ -146,33 +146,67 @@ fn decode(code: u32) -> Instruction {
     }
 }
 
-fn step(registers: &mut Register, memory: &mut Memory) {
+fn step(registers: &mut Registers, memory: &mut Memory) {
+    // Instruction Fetch
+    let pc = registers[PC];
+    let mut next_pc = pc + 4;
+    let code = read_u32(&memory, pc);
+
     // Instruction Decode
-    let code = read_u32(&memory, registers[PC]);
     let instruction = decode(code);
+    println!("{:08x?}", &instruction);
 
     // Execute
+    let rd: Option<u32>;
+    let rd_value;
     match instruction {
+        // LUI
+        Instruction::LUI(u_type) => {
+            rd = Some(u_type.rd());
+            rd_value = u_type.imm();
+        }
+        // AUIPC
+        Instruction::AUIPC(u_type) => {
+            rd = Some(u_type.rd());
+            rd_value = pc + u_type.imm();
+        }
+        // JAL
         Instruction::JAL(j_type) => {
-            let imm = j_type.imm();
-            let rd = j_type.rd();
-            registers[PC] += imm;
-            registers[rd as usize] = registers[PC] + 4;
-            println!("JAL imm: 0x{:x} rd: 0x{:x}", imm, rd);
+            next_pc = pc + j_type.imm();
+            rd = Some(j_type.rd());
+            rd_value = pc + 4;
+        }
+        // OP-IMM // TODO: use sign extended values
+        Instruction::ADDI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = (i_type.imm() as i32 + i_type.rs1() as i32) as u32;
+        }
+        Instruction::SLTI(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = ((i_type.rs1() as i32) < (i_type.imm() as i32)) as u32;
+        }
+        Instruction::SLTIU(i_type) => {
+            rd = Some(i_type.rd());
+            rd_value = (i_type.rs1() < i_type.imm()) as u32;
         }
         _ => {
-            println!("instruction: {:?}", instruction);
+            println!("instruction: {:?}", &instruction);
             panic!("This instruction is not implemented yet, and I don't know what to do bye bye!")
         }
     }
 
-    // Access
-    // Write back
+    // Memory Access
+
+    // Register Write Back
+    registers[PC] = next_pc;
+    if let Some(register) = rd {
+        registers[register as usize] = rd_value
+    }
 }
 
 fn main() {
     let mut memory: Memory = [0; MEMORY_SIZE];
-    let mut registers: Register = [0; 33];
+    let mut registers: Registers = [0; 33];
 
     // for entry in glob::glob("riscv-tests/isa/rv32ui*").unwrap() {
     //     let path = entry.unwrap();
@@ -184,13 +218,15 @@ fn main() {
 
     let path = Path::new("riscv-tests/isa/rv32ui-v-add");
 
-    println!("\nTest {:?}", path);
+    println!("\nStart of: {:?}", path);
     load_elf(&mut memory, path);
     registers[PC] = MEMORY_START as u32;
-    dump(&registers);
 
-    for _ in 0..3 {
+    for i in 0..50 {
+        print!("{:4} {:4x} ", i, registers[PC]);
         step(&mut registers, &mut memory);
-        dump(&registers);
+        if i == 32 {
+            dump_registers(&registers);
+        }
     }
 }
