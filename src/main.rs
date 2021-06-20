@@ -41,15 +41,22 @@ fn load_elf(memory: &mut Memory, path: &Path) {
     }
 }
 
-fn dump(registers: &Register) {
-    for i in 0..4 {
-        for j in 0..8 {
-            let index = i * 8 + j;
-            print!("x{:<2}: {:08x} ", index, registers[index]);
+fn dump_registers(registers: &Registers) {
+    let filler = "─".repeat(14);
+    println!("╭{0:}┬{0:}┬{0:}┬{0:}╮", filler);
+    println!(
+        "│ PC  {0:08x} │{1:}│{1:}│{1:}│",
+        registers[PC],
+        " ".repeat(14)
+    );
+    for i in 0..8 {
+        for j in 0..4 {
+            let index = i + j * 8;
+            print!("│ x{:<02} {:08x} ", index, registers[index]);
         }
-        println!();
+        println!("│");
     }
-    println!("PC : {:08x}\n", registers[PC]);
+    println!("╰{0:}┴{0:}┴{0:}┴{0:}╯", filler);
 }
 
 fn decode(code: u32) -> Instruction {
