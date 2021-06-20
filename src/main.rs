@@ -184,6 +184,40 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(i_type.rd());
             rd_value = pc + 4;
         }
+        // BRANCH
+        Instruction::BEQ(b_type) => {
+            if registers[b_type.rs1() as usize] == registers[b_type.rs2() as usize] {
+                next_pc = pc + b_type.imm();
+            }
+        }
+        Instruction::BNE(b_type) => {
+            if registers[b_type.rs1() as usize] != registers[b_type.rs2() as usize] {
+                next_pc = pc + b_type.imm();
+            }
+        }
+        Instruction::BLT(b_type) => {
+            if (registers[b_type.rs1() as usize] as i32) < (registers[b_type.rs2() as usize] as i32)
+            {
+                next_pc = pc + b_type.imm();
+            }
+        }
+        Instruction::BGE(b_type) => {
+            if (registers[b_type.rs1() as usize] as i32)
+                >= (registers[b_type.rs2() as usize] as i32)
+            {
+                next_pc = pc + b_type.imm();
+            }
+        }
+        Instruction::BLTU(b_type) => {
+            if registers[b_type.rs1() as usize] < registers[b_type.rs2() as usize] {
+                next_pc = pc + b_type.imm();
+            }
+        }
+        Instruction::BGEU(b_type) => {
+            if registers[b_type.rs1() as usize] >= registers[b_type.rs2() as usize] {
+                next_pc = pc + b_type.imm();
+            }
+        }
         // OP-IMM
         Instruction::ADDI(i_type) => {
             rd = Some(i_type.rd());
