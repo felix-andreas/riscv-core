@@ -178,6 +178,12 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(j_type.rd());
             rd_value = pc + 4;
         }
+        // JALR
+        Instruction::JALR(i_type) => {
+            next_pc = (registers[i_type.rs1() as usize] + i_type.imm()) & !1;
+            rd = Some(i_type.rd());
+            rd_value = pc + 4;
+        }
         // OP-IMM
         Instruction::ADDI(i_type) => {
             rd = Some(i_type.rd());
