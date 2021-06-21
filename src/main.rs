@@ -92,9 +92,24 @@ fn decode(code: u32) -> Instruction {
         // FENCE
         0b0001111 => Instruction::FENCE,
         // SYSTEM
-        0b1110011 => match code >> 20 & 1 {
-            0 => Instruction::ECALL,
-            1 => Instruction::EBREAK,
+        0b1110011 => match funct3 {
+            0b000 => match code >> 20 & 0xffff {
+                0b0000_0000_0000 => Instruction::ECALL,
+                0b0000_0000_0001 => Instruction::EBREAK,
+                // Trap-Return Instructions
+                0b0000_0000_0010 => Instruction::URET,
+                0b0001_0000_0010 => Instruction::SRET,
+                0b0011_0000_0010 => Instruction::MRET,
+                // Interrupt-Management Instructions
+                0b0001_0000_0101 => Instruction::WFI,
+                _ => unreachable!(),
+            },
+            0b001 => Instruction::CSRRW,
+            0b010 => Instruction::CSRRS,
+            0b011 => Instruction::CSRRC,
+            0b101 => Instruction::CSRRWI,
+            0b110 => Instruction::CSRRSI,
+            0b111 => Instruction::CSRRCI,
             _ => unreachable!(),
         },
         _ => panic!("Don't know how to decode this :("),
@@ -321,12 +336,35 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(r_type.rd());
             rd_value = registers[r_type.rs1() as usize] & registers[r_type.rs2() as usize]
         }
+        // FENCE
+        Instruction::FENCE => {}
         // SYSTEM
-        Instruction::ECALL | Instruction::EBREAK => {}
-        _ => {
-            println!("instruction: {:?}", &instruction);
-            panic!("This instruction is not implemented yet, and I don't know what to do bye bye!")
+        Instruction::ECALL => {
+            let x3_value = registers[3];
+            if x3_value == 1 {
+                // done = true;
+            } else if x3_value == 21 {
+                dump_registers(registers);
+                panic!("Test fails ECALL(x3: {:08x})", x3_value);
         }
+    }
+        Instruction::EBREAK => {}
+        // Trap-Return Instructions
+        Instruction::URET | Instruction::SRET | Instruction::MRET => {}
+        // Interrupt-Management Instructions
+        Instruction::WFI => {}
+        // CSR Instructions (Zicsr Standard Extension)
+        Instruction::CSRRW => {
+            let csr = code >> 20 & 0xffff;
+            if csr == 3072 {
+                done = true;
+            }
+        }
+        Instruction::CSRRS
+        | Instruction::CSRRC
+        | Instruction::CSRRWI
+        | Instruction::CSRRSI
+        | Instruction::CSRRCI => {}
     }
 
     // Memory Access

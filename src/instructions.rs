@@ -74,4 +74,17 @@ pub enum Instruction {
     // SYSTEM 1110011
     ECALL,
     EBREAK,
+    // Trap-Return Instructions
+    URET,
+    SRET,
+    MRET,
+    // Interrupt-Management Instructions
+    WFI,
+    // CSR Instructions (Zicsr Standard Extension)
+    CSRRW,
+    CSRRS,
+    CSRRC,
+    CSRRWI,
+    CSRRSI,
+    CSRRCI,
 }
