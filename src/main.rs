@@ -200,7 +200,9 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
         // OP-IMM
         Instruction::ADDI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = registers[i_type.rs1() as usize] + i_type.imm();
+            rd_value = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
         }
         Instruction::SLTI(i_type) => {
             rd = Some(i_type.rd());
@@ -245,7 +247,9 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
         }
         Instruction::SUB(r_type) => {
             rd = Some(r_type.rd());
-            rd_value = registers[r_type.rs1() as usize] - registers[r_type.rs2() as usize]
+            rd_value = registers[r_type.rs1() as usize]
+                .overflowing_sub(registers[r_type.rs2() as usize])
+                .0;
         }
         Instruction::SLL(r_type) => {
             rd = Some(r_type.rd());
