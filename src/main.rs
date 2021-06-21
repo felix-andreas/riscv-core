@@ -11,6 +11,7 @@ mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
+use utils::sign_extend;
 
 const PC: usize = 32;
 const MEMORY_SIZE: usize = 0x10000;
@@ -19,7 +20,7 @@ const MEMORY_START: usize = 0x80000000;
 type Registers = [u32; 33];
 type Memory = [u8; MEMORY_SIZE];
 
-fn read_u32(memory: &Memory, address: u32) -> u32 {
+fn read_word(memory: &Memory, address: u32) -> u32 {
     let address = address as usize - MEMORY_START;
     u32::from_le_bytes(memory[address..address + 4].try_into().unwrap())
 }
@@ -151,7 +152,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Instruction Fetch
     let pc = registers[PC];
     let mut next_pc = pc + 4;
-    let code = read_u32(&memory, pc);
+    let code = read_word(&memory, pc);
     print!("{:08x} ", code);
 
     // Instruction Decode
@@ -218,6 +219,32 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             if registers[b_type.rs1() as usize] >= registers[b_type.rs2() as usize] {
                 next_pc = pc + b_type.imm();
             }
+        }
+        // LOAD
+        Instruction::LB(i_type) => {
+            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            rd = Some(i_type.rd());
+            rd_value = sign_extend(read_word(&memory, effective_address) & 0xFF, 8);
+        }
+        Instruction::LH(i_type) => {
+            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            rd = Some(i_type.rd());
+            rd_value = sign_extend(read_word(&memory, effective_address) & 0xFFFF, 16);
+        }
+        Instruction::LW(i_type) => {
+            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            rd = Some(i_type.rd());
+            rd_value = read_word(&memory, effective_address);
+        }
+        Instruction::LBU(i_type) => {
+            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            rd = Some(i_type.rd());
+            rd_value = read_word(&memory, effective_address) & 0xFF;
+        }
+        Instruction::LHU(i_type) => {
+            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            rd = Some(i_type.rd());
+            rd_value = read_word(&memory, effective_address) & 0xFFFF;
         }
         // OP-IMM
         Instruction::ADDI(i_type) => {
