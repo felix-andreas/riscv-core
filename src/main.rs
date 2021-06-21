@@ -372,8 +372,11 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Register Write Back
     registers[PC] = next_pc;
     if let Some(register) = rd {
+        // ignore writes to x0 register
+        if register != 0 {
         registers[register as usize] = rd_value
     }
+    };
 }
 
 fn main() {
