@@ -177,41 +177,57 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
         }
         // LOAD
         Instruction::LB(i_type) => {
-            let address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
             rd = Some(i_type.rd());
             rd_value = sign_extend(load_word(memory, address) & 0xFF, 8);
         }
         Instruction::LH(i_type) => {
-            let address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
             rd = Some(i_type.rd());
             rd_value = sign_extend(load_word(memory, address) & 0xFFFF, 16);
         }
         Instruction::LW(i_type) => {
-            let address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
             rd = Some(i_type.rd());
             rd_value = load_word(memory, address);
         }
         Instruction::LBU(i_type) => {
-            let address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
             rd = Some(i_type.rd());
             rd_value = load_word(memory, address) & 0xFF;
         }
         Instruction::LHU(i_type) => {
-            let address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0;
             rd = Some(i_type.rd());
             rd_value = load_word(memory, address) & 0xFFFF;
         }
         // STORE
         Instruction::SB(s_type) => {
-            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            let address = registers[s_type.rs1() as usize]
+                .overflowing_add(s_type.imm())
+                .0;
             store_byte(memory, address, registers[s_type.rs2() as usize] as u8)
         }
         Instruction::SH(s_type) => {
-            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            let address = registers[s_type.rs1() as usize]
+                .overflowing_add(s_type.imm())
+                .0;
             store_half_word(memory, address, registers[s_type.rs2() as usize] as u16)
         }
         Instruction::SW(s_type) => {
-            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            let address = registers[s_type.rs1() as usize]
+                .overflowing_add(s_type.imm())
+                .0;
             store_word(memory, address, registers[s_type.rs2() as usize])
         }
         // OP-IMM
