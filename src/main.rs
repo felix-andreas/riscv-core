@@ -116,7 +116,9 @@ fn decode(code: u32) -> Instruction {
     }
 }
 
-fn step(registers: &mut Registers, memory: &mut Memory) {
+fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
+    let mut done = false;
+
     // Instruction Fetch
     let pc = registers[PC];
     let mut next_pc = pc + 4;
@@ -346,8 +348,8 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             } else if x3_value == 21 {
                 dump_registers(registers);
                 panic!("Test fails ECALL(x3: {:08x})", x3_value);
+            }
         }
-    }
         Instruction::EBREAK => {}
         // Trap-Return Instructions
         Instruction::URET | Instruction::SRET | Instruction::MRET => {}
@@ -374,22 +376,14 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     if let Some(register) = rd {
         // ignore writes to x0 register
         if register != 0 {
-        registers[register as usize] = rd_value
-    }
+            registers[register as usize] = rd_value
+        }
     };
+
+    done
 }
 
-fn main() {
-    // for entry in glob::glob("riscv-tests/isa/rv32ui*").unwrap() {
-    //     let path = entry.unwrap();
-    //     if path.is_dir() || path.extension().is_some() {
-    //         continue;
-    //     }
-    //
-    // }
-
-    let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
-
+fn run(path: &std::path::Path) {
     println!("ELF file: {:?}", path);
 
     let mut memory: Memory = [0; MEMORY_SIZE];
@@ -401,11 +395,32 @@ fn main() {
         "{:4} {:8} {:8} {:0}",
         "STEP", "ADDRESS", "CODE", "INSTRUCTION"
     );
-    for i in 0..1_0000 {
+    for i in 0..1_000_000 {
         print!("{:4} {:8x} ", i, registers[PC]);
-        step(&mut registers, &mut memory);
-        if i == 32 {
-            dump_registers(&registers);
+        let done = step(&mut registers, &mut memory);
+
+        if i > 32 {
+            // dump_registers(&registers);
+        }
+
+        if done {
+            break;
         }
     }
+    println!("Test succeeded!");
+}
+
+fn main() {
+    for entry in glob::glob("riscv-tests/isa/rv32ui*").unwrap() {
+        let path = entry.unwrap();
+        if path.is_dir() || path.extension().is_some() {
+            continue;
+        }
+
+        run(&path);
+    }
+
+    // let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
+    // let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
+    // run(path);
 }
