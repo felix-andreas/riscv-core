@@ -1,4 +1,5 @@
-use crate::utils::sign_extend;
+use crate::utils::{sign_extend, REGISTER_NAMES};
+
 pub struct RType(pub u32);
 impl RType {
     pub fn rd(&self) -> u32 {
@@ -16,10 +17,10 @@ impl std::fmt::Debug for RType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "R-type rd: {:<2} rs1: x{:<2} rs2: x{:<2}",
-            self.rd(),
-            self.rs1(),
-            self.rs2(),
+            "{} {} {} [R-Type]",
+            REGISTER_NAMES[self.rd() as usize],
+            REGISTER_NAMES[self.rs1() as usize],
+            REGISTER_NAMES[self.rs2() as usize],
         )
     }
 }
@@ -41,9 +42,9 @@ impl std::fmt::Debug for IType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "I-type rd: x{:<2} rs1: x{:<2} imm: 0x{:05x}",
-            self.rd(),
-            self.rs1(),
+            "{} {} 0x{:08x} [I-type]",
+            REGISTER_NAMES[self.rd() as usize],
+            REGISTER_NAMES[self.rs1() as usize],
             self.imm(),
         )
     }
@@ -69,9 +70,9 @@ impl std::fmt::Debug for SType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "S-type imm: rs1: x{:<2} rs2: x{:<2} 0x{:05x}",
-            self.rs1(),
-            self.rs2(),
+            "{} {} 0x{:08x} [S-type]",
+            REGISTER_NAMES[self.rs1() as usize],
+            REGISTER_NAMES[self.rs2() as usize],
             self.imm(),
         )
     }
@@ -100,9 +101,9 @@ impl std::fmt::Debug for BType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "B-type rs1: x{:<2} rs2: x{:<2} imm: 0x{:05x}",
-            self.rs1(),
-            self.rs2(),
+            "{} {} 0x{:08x} [B-type]",
+            REGISTER_NAMES[self.rs1() as usize],
+            REGISTER_NAMES[self.rs2() as usize],
             self.imm(),
         )
     }
@@ -121,7 +122,12 @@ impl UType {
 
 impl std::fmt::Debug for UType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "U-type rd: x{:<2} imm: 0x{:05x}", self.rd(), self.imm())
+        write!(
+            f,
+            "{} 0x{:08x} [U-type]",
+            REGISTER_NAMES[self.rd() as usize],
+            self.imm()
+        )
     }
 }
 
@@ -143,6 +149,11 @@ impl JType {
 
 impl std::fmt::Debug for JType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "J-type rd: x{:<2} imm: 0x{:05x}", self.rd(), self.imm())
+        write!(
+            f,
+            "{} 0x{:08x} J-Type",
+            REGISTER_NAMES[self.rd() as usize],
+            self.imm()
+        )
     }
 }

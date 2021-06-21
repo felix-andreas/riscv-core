@@ -7,6 +7,12 @@ use xmas_elf::program;
 
 use crate::{Memory, Registers, MEMORY_START, PC};
 
+pub const REGISTER_NAMES: [&str; 32] = [
+    "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4",
+    "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4",
+    "t5", "t6",
+];
+
 pub fn sign_extend(number: u32, bits: u8) -> u32 {
     (number ^ (1 << bits)).overflowing_sub(1 << bits).0
 }
@@ -54,17 +60,17 @@ pub fn load_elf(memory: &mut Memory, path: &Path) {
 }
 
 pub fn dump_registers(registers: &Registers) {
-    let filler = "─".repeat(14);
+    let filler = "─".repeat(15);
     println!("╭{0:}┬{0:}┬{0:}┬{0:}╮", filler);
     println!(
-        "│ PC  {0:08x} │{1:}│{1:}│{1:}│",
+        "│   pc {0:08x} │{1:}│{1:}│{1:}│",
         registers[PC],
-        " ".repeat(14)
+        " ".repeat(15)
     );
     for i in 0..8 {
         for j in 0..4 {
             let index = i + j * 8;
-            print!("│ x{:<02} {:08x} ", index, registers[index]);
+            print!("│ {:>4} {:08x} ", REGISTER_NAMES[index], registers[index]);
         }
         println!("│");
     }
