@@ -2,7 +2,7 @@ use crate::utils::sign_extend;
 pub struct RType(pub u32);
 impl RType {
     pub fn rd(&self) -> u32 {
-        self.0 >> 6 & 0b1_1111
+        self.0 >> 7 & 0b1_1111
     }
     pub fn rs1(&self) -> u32 {
         self.0 >> 15 & 0b1_1111
@@ -27,7 +27,7 @@ impl std::fmt::Debug for RType {
 pub struct IType(pub u32);
 impl IType {
     pub fn rd(&self) -> u32 {
-        self.0 >> 6 & 0b1_1111
+        self.0 >> 7 & 0b1_1111
     }
     pub fn rs1(&self) -> u32 {
         self.0 >> 15 & 0b1_1111
@@ -41,7 +41,7 @@ impl std::fmt::Debug for IType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "I-type rd: x{:<2}  rs1: x{:<2} imm: 0x{:05x}",
+            "I-type rd: x{:<2} rs1: x{:<2} imm: 0x{:05x}",
             self.rd(),
             self.rs1(),
             self.imm(),
@@ -101,9 +101,9 @@ impl std::fmt::Debug for BType {
         write!(
             f,
             "B-type rs1: x{:<2} rs2: x{:<2} imm: 0x{:05x}",
-            self.imm(),
+            self.rs1(),
             self.rs2(),
-            self.rs1()
+            self.imm(),
         )
     }
 }
@@ -128,7 +128,7 @@ impl std::fmt::Debug for UType {
 pub struct JType(pub u32);
 impl JType {
     pub fn rd(&self) -> u32 {
-        self.0 >> 6 & 0x1f
+        self.0 >> 7 & 0x1f
     }
     pub fn imm(&self) -> u32 {
         sign_extend(
