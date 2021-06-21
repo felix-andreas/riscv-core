@@ -7,6 +7,7 @@ use xmas_elf::program;
 
 mod formats;
 mod instructions;
+mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
