@@ -123,79 +123,83 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
         // AUIPC
         Instruction::AUIPC(u_type) => {
             rd = Some(u_type.rd());
-            rd_value = pc + u_type.imm();
+            rd_value = pc.overflowing_add(u_type.imm()).0;
         }
         // JAL
         Instruction::JAL(j_type) => {
-            next_pc = pc + j_type.imm();
+            next_pc = pc.overflowing_add(j_type.imm()).0;
             rd = Some(j_type.rd());
             rd_value = pc + 4;
         }
         // JALR
         Instruction::JALR(i_type) => {
-            next_pc = (registers[i_type.rs1() as usize] + i_type.imm()) & !1;
+            next_pc = (registers[i_type.rs1() as usize]
+                .overflowing_add(i_type.imm())
+                .0)
+                & !1;
             rd = Some(i_type.rd());
             rd_value = pc + 4;
         }
         // BRANCH
         Instruction::BEQ(b_type) => {
             if registers[b_type.rs1() as usize] == registers[b_type.rs2() as usize] {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         Instruction::BNE(b_type) => {
             if registers[b_type.rs1() as usize] != registers[b_type.rs2() as usize] {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         Instruction::BLT(b_type) => {
             if (registers[b_type.rs1() as usize] as i32) < (registers[b_type.rs2() as usize] as i32)
             {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         Instruction::BGE(b_type) => {
             if (registers[b_type.rs1() as usize] as i32)
                 >= (registers[b_type.rs2() as usize] as i32)
             {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         Instruction::BLTU(b_type) => {
             if registers[b_type.rs1() as usize] < registers[b_type.rs2() as usize] {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         Instruction::BGEU(b_type) => {
             if registers[b_type.rs1() as usize] >= registers[b_type.rs2() as usize] {
-                next_pc = pc + b_type.imm();
+                next_pc = pc.overflowing_add(b_type.imm()).0;
             }
         }
         // LOAD
         Instruction::LB(i_type) => {
-            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(&memory, effective_address) & 0xFF, 8);
+            rd_value = sign_extend(load_word(memory, address) & 0xFF, 8);
         }
         Instruction::LH(i_type) => {
-            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(&memory, effective_address) & 0xFFFF, 16);
+            rd_value = sign_extend(load_word(memory, address) & 0xFFFF, 16);
         }
         Instruction::LW(i_type) => {
-            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = load_word(&memory, effective_address);
+            rd_value = load_word(memory, address);
         }
         Instruction::LBU(i_type) => {
-            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = load_word(&memory, effective_address) & 0xFF;
+            rd_value = load_word(memory, address) & 0xFF;
         }
         Instruction::LHU(i_type) => {
-            let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
+            let address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = load_word(&memory, effective_address) & 0xFFFF;
+            rd_value = load_word(memory, address) & 0xFFFF;
+        }
         }
         // OP-IMM
         Instruction::ADDI(i_type) => {
