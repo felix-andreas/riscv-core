@@ -4,7 +4,8 @@ mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
-use utils::{dump_registers, load_elf, load_word, sign_extend};
+use utils::{dump_registers, load_elf, sign_extend};
+use utils::{load_word, store_byte, store_half_word, store_word};
 
 const PC: usize = 32;
 const MEMORY_SIZE: usize = 0x10000;
@@ -104,7 +105,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Instruction Fetch
     let pc = registers[PC];
     let mut next_pc = pc + 4;
-    let code = load_word(&memory, pc);
+    let code = load_word(memory, pc);
     print!("{:08x} ", code);
 
     // Instruction Decode
@@ -200,6 +201,18 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
             rd = Some(i_type.rd());
             rd_value = load_word(memory, address) & 0xFFFF;
         }
+        // STORE
+        Instruction::SB(s_type) => {
+            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            store_byte(memory, address, registers[s_type.rs2() as usize] as u8)
+        }
+        Instruction::SH(s_type) => {
+            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            store_half_word(memory, address, registers[s_type.rs2() as usize] as u16)
+        }
+        Instruction::SW(s_type) => {
+            let address = registers[s_type.rs1() as usize] + s_type.imm();
+            store_word(memory, address, registers[s_type.rs2() as usize])
         }
         // OP-IMM
         Instruction::ADDI(i_type) => {
@@ -331,7 +344,7 @@ fn main() {
         "{:4} {:8} {:8} {:0}",
         "STEP", "ADDRESS", "CODE", "INSTRUCTION"
     );
-    for i in 0..100 {
+    for i in 0..1_0000 {
         print!("{:4} {:8x} ", i, registers[PC]);
         step(&mut registers, &mut memory);
         if i == 32 {

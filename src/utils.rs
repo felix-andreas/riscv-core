@@ -16,6 +16,25 @@ pub fn load_word(memory: &Memory, address: u32) -> u32 {
     u32::from_le_bytes(memory[address..address + 4].try_into().unwrap())
 }
 
+pub fn store_word(memory: &mut Memory, address: u32, value: u32) {
+    let address = address as usize - MEMORY_START;
+    memory[address] = value as u8;
+    memory[address + 1] = (value >> 8) as u8;
+    memory[address + 2] = (value >> 16) as u8;
+    memory[address + 3] = (value >> 24) as u8;
+}
+
+pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) {
+    let address = address as usize - MEMORY_START;
+    memory[address] = value as u8;
+    memory[address + 1] = (value >> 8) as u8;
+}
+
+pub fn store_byte(memory: &mut Memory, address: u32, value: u8) {
+    let address = address as usize - MEMORY_START;
+    memory[address] = value as u8;
+}
+
 pub fn load_elf(memory: &mut Memory, path: &Path) {
     let mut buffer = Vec::new();
     {
