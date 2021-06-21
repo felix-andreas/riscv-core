@@ -1,17 +1,10 @@
-use std::convert::TryInto;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-
-use xmas_elf::program;
-
 mod formats;
 mod instructions;
 mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
-use utils::sign_extend;
+use utils::{dump_registers, load_elf, load_word, sign_extend};
 
 const PC: usize = 32;
 const MEMORY_SIZE: usize = 0x10000;
@@ -19,47 +12,6 @@ const MEMORY_START: usize = 0x80000000;
 
 type Registers = [u32; 33];
 type Memory = [u8; MEMORY_SIZE];
-
-fn read_word(memory: &Memory, address: u32) -> u32 {
-    let address = address as usize - MEMORY_START;
-    u32::from_le_bytes(memory[address..address + 4].try_into().unwrap())
-}
-
-fn load_elf(memory: &mut Memory, path: &Path) {
-    let mut buffer = Vec::new();
-    {
-        let mut file = File::open(path).unwrap();
-        assert!(file.read_to_end(&mut buffer).unwrap() > 0);
-    }
-
-    let elf_file = xmas_elf::ElfFile::new(&&buffer).unwrap();
-    for program_header in elf_file.program_iter() {
-        let address = program_header.physical_addr() as usize - MEMORY_START;
-        if let Ok(program::SegmentData::Undefined(data)) = program_header.get_data(&elf_file) {
-            memory[address..address + data.len()].copy_from_slice(data);
-        } else {
-            panic!("this should panic")
-        }
-    }
-}
-
-fn dump_registers(registers: &Registers) {
-    let filler = "─".repeat(14);
-    println!("╭{0:}┬{0:}┬{0:}┬{0:}╮", filler);
-    println!(
-        "│ PC  {0:08x} │{1:}│{1:}│{1:}│",
-        registers[PC],
-        " ".repeat(14)
-    );
-    for i in 0..8 {
-        for j in 0..4 {
-            let index = i + j * 8;
-            print!("│ x{:<02} {:08x} ", index, registers[index]);
-        }
-        println!("│");
-    }
-    println!("╰{0:}┴{0:}┴{0:}┴{0:}╯", filler);
-}
 
 fn decode(code: u32) -> Instruction {
     let opcode = code & 0b111_1111;
@@ -152,7 +104,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Instruction Fetch
     let pc = registers[PC];
     let mut next_pc = pc + 4;
-    let code = read_word(&memory, pc);
+    let code = load_word(&memory, pc);
     print!("{:08x} ", code);
 
     // Instruction Decode
@@ -162,7 +114,6 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
     // Execute
     let mut rd: Option<u32> = None;
     let mut rd_value = 0;
-    // TODO: sign extended immediate
     match instruction {
         // LUI
         Instruction::LUI(u_type) => {
@@ -224,27 +175,27 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
         Instruction::LB(i_type) => {
             let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = sign_extend(read_word(&memory, effective_address) & 0xFF, 8);
+            rd_value = sign_extend(load_word(&memory, effective_address) & 0xFF, 8);
         }
         Instruction::LH(i_type) => {
             let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = sign_extend(read_word(&memory, effective_address) & 0xFFFF, 16);
+            rd_value = sign_extend(load_word(&memory, effective_address) & 0xFFFF, 16);
         }
         Instruction::LW(i_type) => {
             let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = read_word(&memory, effective_address);
+            rd_value = load_word(&memory, effective_address);
         }
         Instruction::LBU(i_type) => {
             let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = read_word(&memory, effective_address) & 0xFF;
+            rd_value = load_word(&memory, effective_address) & 0xFF;
         }
         Instruction::LHU(i_type) => {
             let effective_address = registers[i_type.rs1() as usize] + i_type.imm();
             rd = Some(i_type.rd());
-            rd_value = read_word(&memory, effective_address) & 0xFFFF;
+            rd_value = load_word(&memory, effective_address) & 0xFFFF;
         }
         // OP-IMM
         Instruction::ADDI(i_type) => {
@@ -351,9 +302,6 @@ fn step(registers: &mut Registers, memory: &mut Memory) {
 }
 
 fn main() {
-    let mut memory: Memory = [0; MEMORY_SIZE];
-    let mut registers: Registers = [0; 33];
-
     // for entry in glob::glob("riscv-tests/isa/rv32ui*").unwrap() {
     //     let path = entry.unwrap();
     //     if path.is_dir() || path.extension().is_some() {
@@ -362,16 +310,19 @@ fn main() {
     //
     // }
 
-    let path = Path::new("riscv-tests/isa/rv32ui-v-add");
+    let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
 
     println!("ELF file: {:?}", path);
+
+    let mut memory: Memory = [0; MEMORY_SIZE];
+    let mut registers: Registers = [0; 33];
+    load_elf(&mut memory, path);
+    registers[PC] = MEMORY_START as u32;
+
     println!(
         "{:4} {:8} {:8} {:0}",
         "STEP", "ADDRESS", "CODE", "INSTRUCTION"
     );
-    load_elf(&mut memory, path);
-    registers[PC] = MEMORY_START as u32;
-
     for i in 0..100 {
         print!("{:4} {:8x} ", i, registers[PC]);
         step(&mut registers, &mut memory);
