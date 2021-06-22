@@ -1,14 +1,3 @@
-// pub enum Format {
-//     RType,
-//     IType,
-//     SType,
-//     BType,
-//     UType,
-//     JType,
-// }
-
-// struct Instruction(u32, Format);
-
 use crate::formats::*;
 
 #[derive(Debug)]
