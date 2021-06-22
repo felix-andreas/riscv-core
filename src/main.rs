@@ -123,11 +123,9 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
     let pc = registers[PC];
     let mut next_pc = pc + 4;
     let code = load_word(memory, pc);
-    print!("{:08x} ", code);
 
     // Instruction Decode
     let instruction = decode(code);
-    println!("{:08x?}", &instruction);
 
     // Execute
     let mut rd: Option<u32> = None;
@@ -343,9 +341,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
         // SYSTEM
         Instruction::ECALL => {
             let x3_value = registers[3];
-            if x3_value == 1 {
-                // done = true;
-            } else if x3_value == 21 {
+            if x3_value > 1 {
                 dump_registers(registers);
                 panic!("Test fails ECALL(x3: {:08x})", x3_value);
             }
@@ -383,7 +379,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
     done
 }
 
-fn run(path: &std::path::Path) {
+fn run(path: &std::path::Path, verbose: bool) {
     println!("ELF file: {:?}", path);
 
     let mut memory: Memory = [0; MEMORY_SIZE];
@@ -391,36 +387,42 @@ fn run(path: &std::path::Path) {
     load_elf(&mut memory, path);
     registers[PC] = MEMORY_START as u32;
 
-    println!(
-        "{:4} {:8} {:8} {:0}",
-        "STEP", "ADDRESS", "CODE", "INSTRUCTION"
-    );
-    for i in 0..1_000_000 {
-        print!("{:4} {:8x} ", i, registers[PC]);
-        let done = step(&mut registers, &mut memory);
+    if verbose {
+        println!(
+            "{:4} {:8} {:8} {:0}",
+            "STEP", "ADDRESS", "CODE", "INSTRUCTION"
+        );
+    }
 
-        if i > 32 {
-            // dump_registers(&registers);
+    for i in 0.. {
+        if verbose {
+            let pc = registers[PC];
+            let code = load_word(&memory, pc);
+            let instruction = decode(code);
+
+            // Uncomment to dump registers for range of instructions
+            // if (0x80000198..=0x800001a8).contains(&pc) {
+            //     dump_registers(&registers);
+            // }
+
+            println!("{:4} {:8x} {:08x} {:?}", i, pc, code, &instruction);
         }
 
+        let done = step(&mut registers, &mut memory);
         if done {
+            println!("Test succeeded!");
             break;
         }
     }
-    println!("Test succeeded!");
 }
 
 fn main() {
-    for entry in glob::glob("riscv-tests/isa/rv32ui*").unwrap() {
+    for entry in glob::glob("riscv-tests/isa/rv32ui-p-*").unwrap() {
         let path = entry.unwrap();
         if path.is_dir() || path.extension().is_some() {
             continue;
         }
 
-        run(&path);
+        run(&path, false);
     }
-
-    // let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
-    // let path = std::path::Path::new("riscv-tests/isa/rv32ui-v-add");
-    // run(path);
 }
