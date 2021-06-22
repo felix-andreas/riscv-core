@@ -276,17 +276,17 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
         }
         Instruction::SLLI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = registers[i_type.rs1() as usize] << (i_type.imm() & 0b1111);
+            rd_value = registers[i_type.rs1() as usize] << (i_type.imm() & 0b1_1111);
         }
         Instruction::SRLI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = registers[i_type.rs1() as usize] >> (i_type.imm() & 0b1111);
+            rd_value = registers[i_type.rs1() as usize] >> (i_type.imm() & 0b1_1111);
         }
         Instruction::SRAI(i_type) => {
             rd = Some(i_type.rd());
             // rust uses arithmetic right shift on signed integer types
             rd_value =
-                ((registers[i_type.rs1() as usize] as i32) >> (i_type.imm() & 0b1111)) as u32;
+                ((registers[i_type.rs1() as usize] as i32) >> (i_type.imm() & 0b1_1111)) as u32;
         }
         // OP
         Instruction::ADD(r_type) => {
