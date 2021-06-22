@@ -272,7 +272,7 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
         }
         Instruction::ANDI(i_type) => {
             rd = Some(i_type.rd());
-            rd_value = i_type.rs1() & i_type.imm();
+            rd_value = registers[i_type.rs1() as usize] & i_type.imm();
         }
         Instruction::SLLI(i_type) => {
             rd = Some(i_type.rd());
