@@ -13,8 +13,8 @@ pub const REGISTER_NAMES: [&str; 32] = [
     "t5", "t6",
 ];
 
-pub fn sign_extend(number: u32, bits: u8) -> u32 {
-    (number ^ (1 << bits)).overflowing_sub(1 << bits).0
+pub fn sign_extend(number: u32, bit: u8) -> u32 {
+    (number ^ (1 << bit)).overflowing_sub(1 << bit).0
 }
 
 pub fn load_word(memory: &Memory, address: u32) -> u32 {

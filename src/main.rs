@@ -198,14 +198,14 @@ fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(memory, address) & 0xFF, 8);
+            rd_value = sign_extend(load_word(memory, address) & 0xFF, 7);
         }
         Instruction::LH(i_type) => {
             let address = registers[i_type.rs1() as usize]
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(memory, address) & 0xFFFF, 16);
+            rd_value = sign_extend(load_word(memory, address) & 0xFFFF, 15);
         }
         Instruction::LW(i_type) => {
             let address = registers[i_type.rs1() as usize]
