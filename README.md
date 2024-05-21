@@ -21,3 +21,10 @@ cargo run
 ```
 
 to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass.
+
+## Compile programs
+
+```
+riscv32-none-elf-gcc -march=rv32i -mabi=ilp32 -c fib.c
+riscv32-none-elf-objdump -d fib.o
+```

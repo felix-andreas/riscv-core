@@ -12,28 +12,50 @@ pub fn sign_extend(number: u32, bit: u8) -> u32 {
     (number ^ (1 << bit)).overflowing_sub(1 << bit).0
 }
 
-pub fn load_word(memory: &Memory, address: u32) -> u32 {
-    let address = address as usize - MEMORY_START;
-    u32::from_le_bytes(memory[address..address + 4].try_into().unwrap())
+pub struct MemoryError {
+    pub address: u32,
 }
 
-pub fn store_word(memory: &mut Memory, address: u32, value: u32) {
-    let address = address as usize - MEMORY_START;
-    memory[address] = value as u8;
-    memory[address + 1] = (value >> 8) as u8;
-    memory[address + 2] = (value >> 16) as u8;
-    memory[address + 3] = (value >> 24) as u8;
+pub fn load_word(memory: &Memory, address: u32) -> Result<u32, MemoryError> {
+    let index = address as usize - MEMORY_START;
+    Ok(u32::from_le_bytes(
+        memory
+            .get(index..index + 4)
+            .ok_or_else(|| MemoryError { address })?
+            .try_into()
+            .unwrap(),
+    ))
 }
 
-pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) {
-    let address = address as usize - MEMORY_START;
-    memory[address] = value as u8;
-    memory[address + 1] = (value >> 8) as u8;
+pub fn store_word(memory: &mut Memory, address: u32, value: u32) -> Result<(), MemoryError> {
+    let index = address as usize - MEMORY_START;
+    memory
+        .get_mut(index..index + 4)
+        .ok_or_else(|| MemoryError { address })?
+        .copy_from_slice(&[
+            value as u8,
+            (value >> 8) as u8,
+            (value >> 16) as u8,
+            (value >> 24) as u8,
+        ]);
+    Ok(())
 }
 
-pub fn store_byte(memory: &mut Memory, address: u32, value: u8) {
-    let address = address as usize - MEMORY_START;
-    memory[address] = value;
+pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) -> Result<(), MemoryError> {
+    let index = address as usize - MEMORY_START;
+    memory
+        .get_mut(index..index + 2)
+        .ok_or_else(|| MemoryError { address })?
+        .copy_from_slice(&[value as u8, (value >> 8) as u8]);
+    Ok(())
+}
+
+pub fn store_byte(memory: &mut Memory, address: u32, value: u8) -> Result<(), MemoryError> {
+    let index = address as usize - MEMORY_START;
+    *memory
+        .get_mut(index)
+        .ok_or_else(|| MemoryError { address })? = value;
+    Ok(())
 }
 
 pub fn dump_registers(registers: &Registers) {

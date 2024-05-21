@@ -45,22 +45,23 @@
               (import inputs.rust-overlay)
             ];
           };
-          pkgsRiscv = pkgs.pkgsCross.riscv64-embedded.buildPackages;
+          pkgsRiscv = pkgs.pkgsCross.riscv32-embedded.buildPackages;
           rust-toolchain = pkgs.rust-bin.selectLatestNightlyWith
             (toolchain: toolchain.default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
+              targets = [ "wasm32-unknown-unknown" ];
             });
           craneLib = (crane.mkLib pkgs).overrideToolchain rust-toolchain;
           rustFiles = fs.fileFilter (file: file.hasExt "rs") ./.;
+          webFiles = fs.fileFilter (file: l.any file.hasExt [ "html" "css" "js" ]) ./.;
           cargoFiles = fs.unions [
             (fs.fileFilter (file: file.name == "Cargo.toml" || file.name == "Cargo.lock") ./.)
           ];
           commonArgs = {
             pname = "crate";
             version = "0.1";
-            nativeBuildInputs = with pkgs; (
-              l.optionals stdenv.isLinux [ clang ]
-            );
+            strictDeps = true;
+            CARGO_BUILD_TARGET = "wasm32-unknown-unknown";
           };
           crateDepsOnly = craneLib.buildDepsOnly (commonArgs // {
             cargoCheckCommandcargo = "check --profile release --all-targets --all-features";
@@ -91,6 +92,12 @@
               cargo-sort
               evcxr
               rust-toolchain
+              # Leptos
+              leptosfmt
+              trunk
+              dart-sass
+              binaryen
+              nodePackages.tailwindcss
               # RISC-V
               gnumake
               autoconf
@@ -116,7 +123,7 @@
             ];
           };
           check = crateClippy;
-          package = craneLib.buildPackage (commonArgs // {
+          package = craneLib.buildTrunkPackage (commonArgs // {
             pname = "riscv";
             cargoArtifacts = crateClippy;
             src = fs.toSource {
@@ -124,7 +131,16 @@
               fileset = fs.unions ([
                 cargoFiles
                 rustFiles
+                webFiles
               ]);
+            };
+            nativeBuildInputs = with pkgs; [ nodePackages.tailwindcss ];
+
+            # The version of wasm-bindgen-cli here must match the one from Cargo.lock.
+            wasm-bindgen-cli = pkgs.wasm-bindgen-cli.override {
+              version = "0.2.92";
+              hash = "sha256-1VwY8vQy7soKEgbki4LD+v259751kKxSxmo/gqE6yV0=";
+              cargoHash = "sha256-aACJ+lYNEU8FFBs158G1/JG8sc6Rq080PeKCMnwdpH0=";
             };
           });
         });

@@ -1,10 +1,11 @@
+pub mod app;
 mod formats;
 mod instructions;
 pub mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
-use utils::{dump_registers, sign_extend};
+use utils::{dump_registers, sign_extend, MemoryError};
 use utils::{load_word, store_byte, store_half_word, store_word};
 
 pub const PC: usize = 32;
@@ -14,11 +15,11 @@ pub const MEMORY_START: usize = 0x80000000;
 pub type Registers = [u32; 33];
 pub type Memory = [u8; MEMORY_SIZE];
 
-pub fn decode(code: u32) -> Instruction {
+pub fn decode(code: u32) -> Option<Instruction> {
     let opcode = code & 0b111_1111;
     let funct3 = code >> 12 & 0b111;
     let funct7 = code >> 25 & 0b111_1111;
-    match opcode {
+    Some(match opcode {
         // LUI
         0b0110111 => Instruction::LUI(UType(code)),
         // AUIPC
@@ -35,7 +36,7 @@ pub fn decode(code: u32) -> Instruction {
             0b101 => Instruction::BGE(BType(code)),
             0b110 => Instruction::BLTU(BType(code)),
             0b111 => Instruction::BGEU(BType(code)),
-            _ => unreachable!(),
+            _ => return None,
         },
         // LOAD
         0b0000011 => match funct3 {
@@ -44,14 +45,14 @@ pub fn decode(code: u32) -> Instruction {
             0b010 => Instruction::LW(IType(code)),
             0b100 => Instruction::LBU(IType(code)),
             0b101 => Instruction::LHU(IType(code)),
-            _ => unreachable!(),
+            _ => return None,
         },
         // STORE
         0b0100011 => match funct3 {
             0b000 => Instruction::SB(SType(code)),
             0b001 => Instruction::SH(SType(code)),
             0b010 => Instruction::SW(SType(code)),
-            _ => unreachable!(),
+            _ => return None,
         },
         // OP-IMM
         0b0010011 => match funct3 {
@@ -65,16 +66,16 @@ pub fn decode(code: u32) -> Instruction {
             0b101 => match funct7 {
                 0b0000000 => Instruction::SRLI(IType(code)),
                 0b0100000 => Instruction::SRAI(IType(code)),
-                _ => unreachable!(),
+                _ => return None,
             },
-            _ => unreachable!(),
+            _ => return None,
         },
         // OP
         0b0110011 => match funct3 {
             0b000 => match funct7 {
                 0b0000000 => Instruction::ADD(RType(code)),
                 0b0100000 => Instruction::SUB(RType(code)),
-                _ => unreachable!(),
+                _ => return None,
             },
             0b001 => Instruction::SLL(RType(code)),
             0b010 => Instruction::SLT(RType(code)),
@@ -83,11 +84,11 @@ pub fn decode(code: u32) -> Instruction {
             0b101 => match funct7 {
                 0b0000000 => Instruction::SRL(RType(code)),
                 0b0100000 => Instruction::SRA(RType(code)),
-                _ => unreachable!(),
+                _ => return None,
             },
             0b110 => Instruction::OR(RType(code)),
             0b111 => Instruction::AND(RType(code)),
-            _ => unreachable!(),
+            _ => return None,
         },
         // FENCE
         0b0001111 => Instruction::FENCE,
@@ -102,7 +103,7 @@ pub fn decode(code: u32) -> Instruction {
                 0b0011_0000_0010 => Instruction::MRET,
                 // Interrupt-Management Instructions
                 0b0001_0000_0101 => Instruction::WFI,
-                _ => unreachable!(),
+                _ => return None,
             },
             0b001 => Instruction::CSRRW,
             0b010 => Instruction::CSRRS,
@@ -110,22 +111,34 @@ pub fn decode(code: u32) -> Instruction {
             0b101 => Instruction::CSRRWI,
             0b110 => Instruction::CSRRSI,
             0b111 => Instruction::CSRRCI,
-            _ => unreachable!(),
+            _ => return None,
         },
-        _ => panic!("Don't know how to decode this :("),
+        _ => return None,
+    })
+}
+
+#[derive(Debug, Clone)]
+pub enum Error {
+    DecodeError { code: u32 },
+    MemoryError { address: u32 },
+}
+
+impl From<MemoryError> for Error {
+    fn from(MemoryError { address }: MemoryError) -> Error {
+        Error::MemoryError { address }
     }
 }
 
-pub fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
+pub fn step(registers: &mut Registers, memory: &mut Memory) -> Result<bool, Error> {
     let mut done = false;
 
     // Instruction Fetch
     let pc = registers[PC];
     let mut next_pc = pc + 4;
-    let code = load_word(memory, pc);
+    let code = load_word(memory, pc)?;
 
     // Instruction Decode
-    let instruction = decode(code);
+    let instruction = decode(code).ok_or_else(|| (Error::DecodeError { code }))?;
 
     // Execute
     let mut rd: Option<u32> = None;
@@ -196,54 +209,54 @@ pub fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(memory, address) & 0xFF, 7);
+            rd_value = sign_extend(load_word(memory, address)? & 0xFF, 7);
         }
         Instruction::LH(i_type) => {
             let address = registers[i_type.rs1() as usize]
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = sign_extend(load_word(memory, address) & 0xFFFF, 15);
+            rd_value = sign_extend(load_word(memory, address)? & 0xFFFF, 15);
         }
         Instruction::LW(i_type) => {
             let address = registers[i_type.rs1() as usize]
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = load_word(memory, address);
+            rd_value = load_word(memory, address)?;
         }
         Instruction::LBU(i_type) => {
             let address = registers[i_type.rs1() as usize]
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = load_word(memory, address) & 0xFF;
+            rd_value = load_word(memory, address)? & 0xFF;
         }
         Instruction::LHU(i_type) => {
             let address = registers[i_type.rs1() as usize]
                 .overflowing_add(i_type.imm())
                 .0;
             rd = Some(i_type.rd());
-            rd_value = load_word(memory, address) & 0xFFFF;
+            rd_value = load_word(memory, address)? & 0xFFFF;
         }
         // STORE
         Instruction::SB(s_type) => {
             let address = registers[s_type.rs1() as usize]
                 .overflowing_add(s_type.imm())
                 .0;
-            store_byte(memory, address, registers[s_type.rs2() as usize] as u8)
+            store_byte(memory, address, registers[s_type.rs2() as usize] as u8)?
         }
         Instruction::SH(s_type) => {
             let address = registers[s_type.rs1() as usize]
                 .overflowing_add(s_type.imm())
                 .0;
-            store_half_word(memory, address, registers[s_type.rs2() as usize] as u16)
+            store_half_word(memory, address, registers[s_type.rs2() as usize] as u16)?
         }
         Instruction::SW(s_type) => {
             let address = registers[s_type.rs1() as usize]
                 .overflowing_add(s_type.imm())
                 .0;
-            store_word(memory, address, registers[s_type.rs2() as usize])
+            store_word(memory, address, registers[s_type.rs2() as usize])?
         }
         // OP-IMM
         Instruction::ADDI(i_type) => {
@@ -376,5 +389,5 @@ pub fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
         }
     };
 
-    done
+    Ok(done)
 }
