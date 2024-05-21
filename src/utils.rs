@@ -1,9 +1,4 @@
 use std::convert::TryInto;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
-
-use xmas_elf::program;
 
 use crate::{Memory, Registers, MEMORY_START, PC};
 
@@ -39,28 +34,6 @@ pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) {
 pub fn store_byte(memory: &mut Memory, address: u32, value: u8) {
     let address = address as usize - MEMORY_START;
     memory[address] = value;
-}
-
-pub fn load_elf(memory: &mut Memory, path: &Path) {
-    let mut buffer = Vec::new();
-    {
-        let mut file = File::open(path).unwrap();
-        assert!(file.read_to_end(&mut buffer).unwrap() > 0);
-    }
-
-    let elf_file = xmas_elf::ElfFile::new(&buffer).unwrap();
-    for program_header in elf_file.program_iter() {
-        // TODO: revise this
-        if program_header.physical_addr() == 0 {
-            continue;
-        }
-        let address = program_header.physical_addr() as usize - MEMORY_START;
-        if let Ok(program::SegmentData::Undefined(data)) = program_header.get_data(&elf_file) {
-            memory[address..address + data.len()].copy_from_slice(data);
-        } else {
-            panic!("this should panic")
-        }
-    }
 }
 
 pub fn dump_registers(registers: &Registers) {

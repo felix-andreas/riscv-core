@@ -1,18 +1,18 @@
 mod formats;
 mod instructions;
-mod utils;
+pub mod utils;
 
 use formats::{BType, IType, JType, RType, SType, UType};
 use instructions::Instruction;
-use utils::{dump_registers, load_elf, sign_extend};
+use utils::{dump_registers, sign_extend};
 use utils::{load_word, store_byte, store_half_word, store_word};
 
-const PC: usize = 32;
-const MEMORY_SIZE: usize = 0x10000;
-const MEMORY_START: usize = 0x80000000;
+pub const PC: usize = 32;
+pub const MEMORY_SIZE: usize = 0x10000;
+pub const MEMORY_START: usize = 0x80000000;
 
-type Registers = [u32; 33];
-type Memory = [u8; MEMORY_SIZE];
+pub type Registers = [u32; 33];
+pub type Memory = [u8; MEMORY_SIZE];
 
 pub fn decode(code: u32) -> Instruction {
     let opcode = code & 0b111_1111;
@@ -377,39 +377,4 @@ pub fn step(registers: &mut Registers, memory: &mut Memory) -> bool {
     };
 
     done
-}
-
-pub fn run(path: &std::path::Path, verbose: bool) {
-    let mut memory: Memory = [0; MEMORY_SIZE];
-    let mut registers: Registers = [0; 33];
-    load_elf(&mut memory, path);
-    registers[PC] = MEMORY_START as u32;
-
-    if verbose {
-        println!(
-            "{:4} {:8} {:8} {:0}",
-            "STEP", "ADDRESS", "CODE", "INSTRUCTION"
-        );
-    }
-
-    for i in 0.. {
-        if verbose {
-            let pc = registers[PC];
-            let code = load_word(&memory, pc);
-            let instruction = decode(code);
-
-            // Uncomment to dump registers for range of instructions
-            // if (0x80000198..=0x800001a8).contains(&pc) {
-            //     dump_registers(&registers);
-            // }
-
-            println!("{:4} {:8x} {:08x} {:?}", i, pc, code, &instruction);
-        }
-
-        let done = step(&mut registers, &mut memory);
-        if done {
-            println!("Test succeeded!");
-            break;
-        }
-    }
 }
