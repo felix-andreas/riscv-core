@@ -9,15 +9,12 @@ A minimal RV32I RISC-V core implement in Rust. This is just a weekend project, b
 
 ## Setup
 
-Download and compile tests from https://github.com/riscv/riscv-tests
 
-Tip: Use nix to get a shell with riscv cross compiler
-```
-nix shell nixpkgs#pkgsCross.riscv64-embedded.buildPackages.gcc 
-nix shell nixpkgs#pkgsCross.riscv64-embedded.buildPackages.binutils
-```
+## RISC-V tests
 
-Type 
+Download and compile tests from https://github.com/riscv/riscv-tests.
+
+Then, run:
 
 ```
 cargo run
