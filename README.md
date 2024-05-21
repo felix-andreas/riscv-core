@@ -2,13 +2,18 @@
 
 A minimal RV32I RISC-V core implement in Rust. This is just a weekend project, but some tests actually pass!
 
-* Based on the Python implementation of twitchcore 
-    * https://github.com/geohot/twitchcore
-    * https://www.youtube.com/watch?v=camQ9QeBY9Q
-* Inspired by https://github.com/fintelia/riscv-decode
+## Usage
 
-## Setup
+```
+trunk serve
+```
 
+## Compile programs
+
+```
+riscv32-none-elf-gcc -march=rv32i -mabi=ilp32 -c fib.c
+riscv32-none-elf-objdump -d fib.o
+```
 
 ## RISC-V tests
 
@@ -22,9 +27,20 @@ cargo run
 
 to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass.
 
-## Compile programs
+## TODO
 
-```
-riscv32-none-elf-gcc -march=rv32i -mabi=ilp32 -c fib.c
-riscv32-none-elf-objdump -d fib.o
-```
+* Add CI
+* Add deployment
+* Show bits for register
+* Show bits for RAM
+* Fix program
+* Better error message
+* Show different numbers on hover
+* Implement clock (with little animation cake) + indicator if running or not
+* Refactor code into two crates
+
+## References
+
+* [The RISC-V Instruction Set Manual](https://riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf)
+* [twitchcore](https://github.com/geohot/twitchcore)
+* [twitchcore lesson](https://www.youtube.com/watch?v=camQ9QeBY9Q)

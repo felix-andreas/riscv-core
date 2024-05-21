@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
             ),
             Error::DecodeError { code } => format!("Failed to decode instruction {code:016b}"),
         },
-        _ => format!(""),
+        _ => String::new(),
     };
 
     let registers: RwSignal<Registers> = RwSignal::new([0; 33]);
@@ -145,7 +145,10 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
             <div class="font-bold">"RAM"</div>
             <div class="grid grid-cols-[auto_1fr] gap-x-1">
                 <For
-                    each=move || memory()[0..32].to_vec().into_iter().take(33).enumerate()
+                    each=move || {
+                        memory().iter().take(33).copied().enumerate().collect::<Vec<_>>()
+                    }
+
                     key=|(index, _)| *index
                     let:child
                 >
@@ -157,7 +160,8 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
     }
 }
 
-enum Type {
+#[allow(clippy::enum_variant_names)]
+enum InstType {
     RType(RType),
     IType(IType),
     SType(SType),
@@ -174,32 +178,76 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         (0..32)
             .filter_map(|i| {
                 let address = start() + 4 * i;
-                crate::utils::load_word(&memory, address as u32).ok()
+                crate::utils::load_word(&memory, address).ok()
             })
             .collect()
     });
-    let view_instruction = |i_type| match i_type {
-        Some(Type::RType(r_type)) => {
-            view! {
-                <div>
-                    <div>{r_type.rd()}</div>
-                    <div>{r_type.rs1()}</div>
-                    <div>{r_type.rs2()}</div>
-                </div>
-            }
+    let view_instruction = |i_type| {
+        view! {
+            <div class="flex items-center border border-gray-700 gap-2">
+                {match i_type {
+                    Some(InstType::RType(r_type)) => {
+                        view! {
+                            <>
+                                <div>{r_type.rd()}</div>
+                                <div>{r_type.rs1()}</div>
+                                <div>{r_type.rs2()}</div>
+                            </>
+                        }
+                    }
+                    Some(InstType::IType(i_type)) => {
+                        view! {
+                            <>
+                                <div>"IType"</div>
+                                <div>"IMM " {i_type.imm()}</div>
+                                <div>{i_type.rd()}</div>
+                                <div>{i_type.rs1()}</div>
+                            </>
+                        }
+                    }
+                    Some(InstType::SType(s_type)) => {
+                        view! {
+                            <>
+                                <div>"SType"</div>
+                                <div>"IMM " {s_type.imm()}</div>
+                                <div>{s_type.rs1()}</div>
+                                <div>{s_type.rs2()}</div>
+                            </>
+                        }
+                    }
+                    Some(InstType::BType(b_type)) => {
+                        view! {
+                            <>
+                                <div>"IType"</div>
+                                <div>"IMM " {b_type.imm()}</div>
+                                <div>{b_type.rs1()}</div>
+                                <div>{b_type.rs2()}</div>
+                            </>
+                        }
+                    }
+                    Some(InstType::UType(u_type)) => {
+                        view! {
+                            <>
+                                <div>"IType"</div>
+                                <div>"IMM " {u_type.imm()}</div>
+                                <div>{u_type.rd()}</div>
+                            </>
+                        }
+                    }
+                    Some(InstType::JType(j_type)) => {
+                        view! {
+                            <>
+                                <div>"IType"</div>
+                                <div>"IMM " {j_type.imm()}</div>
+                                <div>{j_type.rd()}</div>
+                            </>
+                        }
+                    }
+                    None => view! { <>-</> },
+                }}
+
+            </div>
         }
-        Some(Type::IType(i_type)) => {
-            view! {
-                <div class="flex items-center border border-gray-700 gap-2">
-                    <div>"IType"</div>
-                    <div>"IMM " {i_type.imm()}</div>
-                    <div class="border">{i_type.rd()}</div>
-                    <div>{i_type.rs1()}</div>
-                </div>
-            }
-        }
-        None => view! { <div>-</div> },
-        _ => view! { <div>other</div> },
     };
 
     view! {
@@ -232,43 +280,47 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                             }
                             Some(instruction) => {
                                 let (name, i_type) = match instruction {
-                                    Instruction::LUI(lui) => ("LUI", Some(Type::UType(lui))),
-                                    Instruction::AUIPC(auipc) => ("AUIPC", Some(Type::UType(auipc))),
-                                    Instruction::JAL(jal) => ("JAL", Some(Type::JType(jal))),
-                                    Instruction::JALR(jalr) => ("JALR", Some(Type::IType(jalr))),
-                                    Instruction::BEQ(beq) => ("BEQ", Some(Type::BType(beq))),
-                                    Instruction::BNE(bne) => ("BNE", Some(Type::BType(bne))),
-                                    Instruction::BLT(blt) => ("BLT", Some(Type::BType(blt))),
-                                    Instruction::BGE(bge) => ("BGE", Some(Type::BType(bge))),
-                                    Instruction::BLTU(bltu) => ("BLTU", Some(Type::BType(bltu))),
-                                    Instruction::BGEU(bgeu) => ("BGEU", Some(Type::BType(bgeu))),
-                                    Instruction::LB(lb) => ("LB", Some(Type::IType(lb))),
-                                    Instruction::LH(lh) => ("LH", Some(Type::IType(lh))),
-                                    Instruction::LW(lw) => ("LW", Some(Type::IType(lw))),
-                                    Instruction::LBU(lbu) => ("LBU", Some(Type::IType(lbu))),
-                                    Instruction::LHU(lhu) => ("LHU", Some(Type::IType(lhu))),
-                                    Instruction::SB(sb) => ("SB", Some(Type::SType(sb))),
-                                    Instruction::SH(sh) => ("SH", Some(Type::SType(sh))),
-                                    Instruction::SW(sw) => ("SW", Some(Type::SType(sw))),
-                                    Instruction::ADDI(addi) => ("ADDI", Some(Type::IType(addi))),
-                                    Instruction::SLTI(slti) => ("SLTI", Some(Type::IType(slti))),
-                                    Instruction::SLTIU(sltiu) => ("SLTIU", Some(Type::IType(sltiu))),
-                                    Instruction::XORI(xori) => ("XORI", Some(Type::IType(xori))),
-                                    Instruction::ORI(ori) => ("ORI", Some(Type::IType(ori))),
-                                    Instruction::ANDI(andi) => ("ANDI", Some(Type::IType(andi))),
-                                    Instruction::SLLI(slli) => ("SLLI", Some(Type::IType(slli))),
-                                    Instruction::SRLI(srli) => ("SRLI", Some(Type::IType(srli))),
-                                    Instruction::SRAI(srai) => ("SRAI", Some(Type::IType(srai))),
-                                    Instruction::ADD(add) => ("ADD", Some(Type::RType(add))),
-                                    Instruction::SUB(sub) => ("SUB", Some(Type::RType(sub))),
-                                    Instruction::SLL(sll) => ("SLL", Some(Type::RType(sll))),
-                                    Instruction::SLT(slt) => ("SLT", Some(Type::RType(slt))),
-                                    Instruction::SLTU(sltu) => ("SLTU", Some(Type::RType(sltu))),
-                                    Instruction::XOR(xor) => ("XOR", Some(Type::RType(xor))),
-                                    Instruction::SRL(srl) => ("SRL", Some(Type::RType(srl))),
-                                    Instruction::SRA(sra) => ("SRA", Some(Type::RType(sra))),
-                                    Instruction::OR(or) => ("OR", Some(Type::RType(or))),
-                                    Instruction::AND(and) => ("AND", Some(Type::RType(and))),
+                                    Instruction::LUI(lui) => ("LUI", Some(InstType::UType(lui))),
+                                    Instruction::AUIPC(auipc) => {
+                                        ("AUIPC", Some(InstType::UType(auipc)))
+                                    }
+                                    Instruction::JAL(jal) => ("JAL", Some(InstType::JType(jal))),
+                                    Instruction::JALR(jalr) => ("JALR", Some(InstType::IType(jalr))),
+                                    Instruction::BEQ(beq) => ("BEQ", Some(InstType::BType(beq))),
+                                    Instruction::BNE(bne) => ("BNE", Some(InstType::BType(bne))),
+                                    Instruction::BLT(blt) => ("BLT", Some(InstType::BType(blt))),
+                                    Instruction::BGE(bge) => ("BGE", Some(InstType::BType(bge))),
+                                    Instruction::BLTU(bltu) => ("BLTU", Some(InstType::BType(bltu))),
+                                    Instruction::BGEU(bgeu) => ("BGEU", Some(InstType::BType(bgeu))),
+                                    Instruction::LB(lb) => ("LB", Some(InstType::IType(lb))),
+                                    Instruction::LH(lh) => ("LH", Some(InstType::IType(lh))),
+                                    Instruction::LW(lw) => ("LW", Some(InstType::IType(lw))),
+                                    Instruction::LBU(lbu) => ("LBU", Some(InstType::IType(lbu))),
+                                    Instruction::LHU(lhu) => ("LHU", Some(InstType::IType(lhu))),
+                                    Instruction::SB(sb) => ("SB", Some(InstType::SType(sb))),
+                                    Instruction::SH(sh) => ("SH", Some(InstType::SType(sh))),
+                                    Instruction::SW(sw) => ("SW", Some(InstType::SType(sw))),
+                                    Instruction::ADDI(addi) => ("ADDI", Some(InstType::IType(addi))),
+                                    Instruction::SLTI(slti) => ("SLTI", Some(InstType::IType(slti))),
+                                    Instruction::SLTIU(sltiu) => {
+                                        ("SLTIU", Some(InstType::IType(sltiu)))
+                                    }
+                                    Instruction::XORI(xori) => ("XORI", Some(InstType::IType(xori))),
+                                    Instruction::ORI(ori) => ("ORI", Some(InstType::IType(ori))),
+                                    Instruction::ANDI(andi) => ("ANDI", Some(InstType::IType(andi))),
+                                    Instruction::SLLI(slli) => ("SLLI", Some(InstType::IType(slli))),
+                                    Instruction::SRLI(srli) => ("SRLI", Some(InstType::IType(srli))),
+                                    Instruction::SRAI(srai) => ("SRAI", Some(InstType::IType(srai))),
+                                    Instruction::ADD(add) => ("ADD", Some(InstType::RType(add))),
+                                    Instruction::SUB(sub) => ("SUB", Some(InstType::RType(sub))),
+                                    Instruction::SLL(sll) => ("SLL", Some(InstType::RType(sll))),
+                                    Instruction::SLT(slt) => ("SLT", Some(InstType::RType(slt))),
+                                    Instruction::SLTU(sltu) => ("SLTU", Some(InstType::RType(sltu))),
+                                    Instruction::XOR(xor) => ("XOR", Some(InstType::RType(xor))),
+                                    Instruction::SRL(srl) => ("SRL", Some(InstType::RType(srl))),
+                                    Instruction::SRA(sra) => ("SRA", Some(InstType::RType(sra))),
+                                    Instruction::OR(or) => ("OR", Some(InstType::RType(or))),
+                                    Instruction::AND(and) => ("AND", Some(InstType::RType(and))),
                                     Instruction::FENCE => ("FENCE", None),
                                     Instruction::ECALL => ("ECALL", None),
                                     Instruction::EBREAK => ("EBREAK", None),

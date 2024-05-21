@@ -12,6 +12,7 @@ pub fn sign_extend(number: u32, bit: u8) -> u32 {
     (number ^ (1 << bit)).overflowing_sub(1 << bit).0
 }
 
+#[derive(Debug)]
 pub struct MemoryError {
     pub address: u32,
 }
@@ -21,7 +22,7 @@ pub fn load_word(memory: &Memory, address: u32) -> Result<u32, MemoryError> {
     Ok(u32::from_le_bytes(
         memory
             .get(index..index + 4)
-            .ok_or_else(|| MemoryError { address })?
+            .ok_or(MemoryError { address })?
             .try_into()
             .unwrap(),
     ))
@@ -31,7 +32,7 @@ pub fn store_word(memory: &mut Memory, address: u32, value: u32) -> Result<(), M
     let index = address as usize - MEMORY_START;
     memory
         .get_mut(index..index + 4)
-        .ok_or_else(|| MemoryError { address })?
+        .ok_or(MemoryError { address })?
         .copy_from_slice(&[
             value as u8,
             (value >> 8) as u8,
@@ -45,7 +46,7 @@ pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) -> Result<
     let index = address as usize - MEMORY_START;
     memory
         .get_mut(index..index + 2)
-        .ok_or_else(|| MemoryError { address })?
+        .ok_or(MemoryError { address })?
         .copy_from_slice(&[value as u8, (value >> 8) as u8]);
     Ok(())
 }
@@ -54,7 +55,7 @@ pub fn store_byte(memory: &mut Memory, address: u32, value: u8) -> Result<(), Me
     let index = address as usize - MEMORY_START;
     *memory
         .get_mut(index)
-        .ok_or_else(|| MemoryError { address })? = value;
+        .ok_or(MemoryError { address })? = value;
     Ok(())
 }
 

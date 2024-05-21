@@ -138,7 +138,7 @@ pub fn step(registers: &mut Registers, memory: &mut Memory) -> Result<bool, Erro
     let code = load_word(memory, pc)?;
 
     // Instruction Decode
-    let instruction = decode(code).ok_or_else(|| (Error::DecodeError { code }))?;
+    let instruction = decode(code).ok_or(Error::DecodeError { code })?;
 
     // Execute
     let mut rd: Option<u32> = None;

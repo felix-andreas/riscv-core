@@ -31,8 +31,8 @@ pub fn run(path: &std::path::Path, verbose: bool) {
     for i in 0.. {
         if verbose {
             let pc = registers[PC];
-            let code = riscv_core::utils::load_word(&memory, pc);
-            let instruction = riscv_core::decode(code);
+            let code = riscv_core::utils::load_word(&memory, pc).unwrap();
+            let instruction = riscv_core::decode(code).unwrap();
 
             // Uncomment to dump registers for range of instructions
             // if (0x80000198..=0x800001a8).contains(&pc) {
@@ -42,7 +42,7 @@ pub fn run(path: &std::path::Path, verbose: bool) {
             println!("{:4} {:8x} {:08x} {:?}", i, pc, code, &instruction);
         }
 
-        let done = step(&mut registers, &mut memory);
+        let done = step(&mut registers, &mut memory).unwrap();
         if done {
             println!("Test succeeded!");
             break;
