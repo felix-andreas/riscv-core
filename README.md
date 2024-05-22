@@ -29,13 +29,14 @@ to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass
 
 ## TODO
 
-* Show bits for register
-* Show bits for RAM
+* Finish Program section
 * Fix program
+* Visualize rs1, rs2, rd
 * Better error message
 * Show different numbers on hover
 * Implement clock (with little animation cake) + indicator if running or not
 * Refactor code into two crates
+* Set font (don't just use system font)
 
 ## References
 
