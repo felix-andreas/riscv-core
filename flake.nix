@@ -147,7 +147,7 @@
             name = "publish";
             runtimeInputs = [ wrangler ];
             text = ''
-              wrangler pages publish --project-name=riscv-felixandreas ${package}
+              wrangler pages deploy --project-name=riscv-felixandreas ${package}
             '';
           };
         });
