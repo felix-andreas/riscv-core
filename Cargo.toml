@@ -14,7 +14,6 @@ console_error_panic_hook = "0.1"
 glob = "0.3"
 xmas-elf = "0.9"
 
-
 [profile.release]
 opt-level = 'z'
 lto = true

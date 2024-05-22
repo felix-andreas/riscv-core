@@ -17,3 +17,9 @@ jobs:
       - uses: DeterminateSystems/flake-checker-action@main
       - name: Run `nix flake check`
         run: nix flake check -L
+      - name: Publish
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN_DOCS }}
+        run: |
+          nix run .#publish

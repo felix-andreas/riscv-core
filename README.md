@@ -29,8 +29,6 @@ to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass
 
 ## TODO
 
-* Add CI
-* Add deployment
 * Show bits for register
 * Show bits for RAM
 * Fix program

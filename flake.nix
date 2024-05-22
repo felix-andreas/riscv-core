@@ -82,7 +82,7 @@
             };
           });
         in
-        {
+        rec {
           devShell = pkgs.devshell.mkShell {
             motd = "";
             packages = with pkgs; [
@@ -143,11 +143,21 @@
               cargoHash = "sha256-aACJ+lYNEU8FFBs158G1/JG8sc6Rq080PeKCMnwdpH0=";
             };
           });
+          publish = with pkgs; writeShellApplication {
+            name = "publish";
+            runtimeInputs = [ wrangler ];
+            text = ''
+              wrangler pages publish --project-name=riscv-felixandreas ${package}
+            '';
+          };
         });
     in
     {
       checks = eachSystem (system: { default = (flake system).check; });
       devShells = eachSystem (system: { default = (flake system).devShell; });
-      packages = eachSystem (system: { default = (flake system).package; });
+      packages = eachSystem (system: {
+        default = (flake system).package;
+        publish = (flake system).publish;
+      });
     };
 }
