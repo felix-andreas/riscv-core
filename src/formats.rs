@@ -1,5 +1,6 @@
 use crate::utils::{sign_extend, REGISTER_NAMES};
 
+#[derive(Clone, Copy)]
 pub struct RType(pub u32);
 impl RType {
     pub fn rd(&self) -> u32 {
@@ -25,6 +26,7 @@ impl std::fmt::Debug for RType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct IType(pub u32);
 impl IType {
     pub fn rd(&self) -> u32 {
@@ -50,6 +52,7 @@ impl std::fmt::Debug for IType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct SType(pub u32);
 impl SType {
     pub fn rs1(&self) -> u32 {
@@ -78,6 +81,7 @@ impl std::fmt::Debug for SType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct BType(pub u32);
 impl BType {
     pub fn rs1(&self) -> u32 {
@@ -109,6 +113,7 @@ impl std::fmt::Debug for BType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct UType(pub u32);
 impl UType {
     pub fn rd(&self) -> u32 {
@@ -131,6 +136,7 @@ impl std::fmt::Debug for UType {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct JType(pub u32);
 impl JType {
     pub fn rd(&self) -> u32 {

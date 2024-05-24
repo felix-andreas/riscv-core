@@ -1,12 +1,13 @@
 #![allow(non_snake_case)]
 
-use leptos::*;
+use leptos::{html::rt, *};
 use leptos_meta::*;
 
 use crate::{
     formats::{BType, IType, JType, RType, SType, UType},
     Error, Instruction, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC,
 };
+use std::{ops::Deref, rc::Rc};
 
 #[derive(Debug, Clone)]
 enum State {
@@ -114,6 +115,35 @@ pub fn App() -> impl IntoView {
             <div class="">
                 <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
                     <div class="p-8 grid gap-4 ">
+                        <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
+                            <For
+                                each=move || {
+                                    vec![
+                                        ("imm", 20, format!("1")),
+                                        ("rd", 5, format!("2")),
+                                        ("opcode", 7, format!("3")),
+                                    ]
+                                        .into_iter()
+                                        .map(|x| x.2)
+                                        .enumerate()
+                                }
+
+                                key=move |(index, _)| *index
+                                let:child
+                            >
+                                <div
+                                    class="grid"
+                                    style=("grid-column", move || format!("{} span", child.1))
+                                >
+
+                                    <Show when=move || { matches!(View::Decoded, View::Decoded) }>
+                                        <div class="h-6 bg-white grid place-items-center">0</div>
+                                    </Show>
+                                    <div class="h-6 bg-white grid place-items-center">// {move || child.2.clone()}
+                                    </div>
+                                </div>
+                            </For>
+                        </div>
                         <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
                             <button
                                 class=move || {
@@ -248,7 +278,7 @@ pub fn App() -> impl IntoView {
 }
 
 #[allow(clippy::enum_variant_names)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum InstType {
     RType(RType),
     IType(IType),
@@ -304,146 +334,84 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                         {format!("{code:08x}")}
                     </div>
                 </Show>
-                {match i_type {
-                    Some(InstType::RType(r_type)) => {
-                        view! {
-                            <>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "f7"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs2"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs1"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-3">
-                                    "f3"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rd"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
+                <Show when=move || { !matches!(view_state(), View::Hex) }>
+                    <For
+                        each=move || {
+                            (match i_type {
+                                Some(InstType::RType(r_type)) => {
+                                    vec![
+                                        ("f7", 7, format!("")),
+                                        ("rs2", 5, format!("x{:02}", r_type.rs2())),
+                                        ("rs1", 5, format!("x{:02}", r_type.rs1())),
+                                        ("f3", 3, format!("")),
+                                        ("rd", 5, format!("x{:02}", r_type.rd())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                Some(InstType::IType(i_type)) => {
+                                    vec![
+                                        ("imm", 12, format!("x{:02}", i_type.imm())),
+                                        ("rs1", 5, format!("x{:02}", i_type.rs1())),
+                                        ("f3", 3, format!("")),
+                                        ("rd", 5, format!("x{:02}", i_type.rd())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                Some(InstType::SType(s_type)) => {
+                                    vec![
+                                        ("imm", 7, format!("x{:02}", s_type.imm())),
+                                        ("rs2", 5, format!("x{:02}", s_type.rs2())),
+                                        ("rs1", 5, format!("x{:02}", s_type.rs1())),
+                                        ("f3", 3, format!("")),
+                                        ("imm", 5, format!("x{:02}", s_type.imm())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                Some(InstType::BType(b_type)) => {
+                                    vec![
+                                        ("imm", 7, format!("x{:02}", b_type.imm())),
+                                        ("rs2", 5, format!("x{:02}", b_type.rs2())),
+                                        ("rs1", 5, format!("x{:02}", b_type.rs1())),
+                                        ("f3", 3, format!("")),
+                                        ("imm", 5, format!("x{:02}", b_type.imm())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                Some(InstType::UType(u_type)) => {
+                                    vec![
+                                        ("imm", 20, format!("x{:02}", u_type.imm())),
+                                        ("rd", 5, format!("x{:02}", u_type.rd())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                Some(InstType::JType(j_type)) => {
+                                    vec![
+                                        ("imm", 20, format!("x{:02}", j_type.imm())),
+                                        ("rd", 5, format!("x{:02}", j_type.rd())),
+                                        ("opcode", 7, format!("")),
+                                    ]
+                                }
+                                None => vec![("unknown", 32, format!(""))],
+                            })
+                                .into_iter()
+                                .enumerate()
                         }
-                    }
-                    Some(InstType::IType(i_type)) => {
-                        view! {
-                            <>
-                                <div class="h-6 bg-white grid place-items-center col-span-12">
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs1"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-3">
-                                    "f3"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rd"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
-                        }
-                    }
-                    Some(InstType::SType(s_type)) => {
-                        view! {
-                            <>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs2"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs1"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-3">
-                                    "f3"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
-                        }
-                    }
-                    Some(InstType::BType(b_type)) => {
-                        view! {
-                            <>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs2"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rs1"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-3">
-                                    "f3"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
-                        }
-                    }
-                    Some(InstType::UType(u_type)) => {
-                        view! {
-                            <>
-                                <div
-                                    class="h-6 bg-white grid place-items-center"
-                                    style="grid-column: span 20;"
-                                >
-                                    "imma"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rd"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
-                        }
-                    }
-                    Some(InstType::JType(j_type)) => {
-                        view! {
-                            <>
-                                <div
-                                    class="h-6 bg-white grid place-items-center"
-                                    style="grid-column: span 20"
-                                >
-                                    "imm"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-5">
-                                    "rd"
-                                </div>
-                                <div class="h-6 bg-white grid place-items-center col-span-7">
-                                    "opcode"
-                                </div>
-                            </>
-                        }
-                    }
-                    None => {
-                        view! {
-                            <>
-                                <div class="h-6 bg-white grid place-items-center col-span-full">
-                                    "unknown"
-                                </div>
-                            </>
-                        }
-                    }
-                }}
+
+                        key=|(index, _)| *index
+                        let:child
+                    >
+                        <div
+                            class="grid"
+                            style=("grid-column", move || format!("{} span", child.1.1))
+                        >
+                            <Show when=move || { matches!(view_state(), View::Decoded) }>
+                                <div class="h-6 bg-white grid place-items-center">0</div>
+                            </Show>
+                            <div class="h-6 bg-white grid place-items-center">{child.1.0}</div>
+                        </div>
+                    </For>
+
+                </Show>
 
             </div>
         }
@@ -451,7 +419,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
 
     view! {
         <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
-            <div class="text-center">"Program"</div>
+            <div class="text-center">"Instructions"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[View::Binary, View::Decoded, View::Hex]
                     .map(|x| {
