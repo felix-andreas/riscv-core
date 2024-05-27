@@ -29,7 +29,6 @@ to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass
 
 ## TODO
 
-* Finish Program section
 * Fix program
 * Visualize rs1, rs2, rd
 * Better error message

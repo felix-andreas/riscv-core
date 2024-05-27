@@ -1,13 +1,13 @@
 #![allow(non_snake_case)]
 
-use leptos::{html::rt, *};
+use leptos::*;
 use leptos_meta::*;
 
 use crate::{
     formats::{BType, IType, JType, RType, SType, UType},
+    utils::REGISTER_NAMES,
     Error, Instruction, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC,
 };
-use std::{ops::Deref, rc::Rc};
 
 #[derive(Debug, Clone)]
 enum State {
@@ -116,35 +116,6 @@ pub fn App() -> impl IntoView {
                 <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
                     <div class="p-8 grid gap-4 ">
                         <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
-                            <For
-                                each=move || {
-                                    vec![
-                                        ("imm", 20, format!("1")),
-                                        ("rd", 5, format!("2")),
-                                        ("opcode", 7, format!("3")),
-                                    ]
-                                        .into_iter()
-                                        .map(|x| x.2)
-                                        .enumerate()
-                                }
-
-                                key=move |(index, _)| *index
-                                let:child
-                            >
-                                <div
-                                    class="grid"
-                                    style=("grid-column", move || format!("{} span", child.1))
-                                >
-
-                                    <Show when=move || { matches!(View::Decoded, View::Decoded) }>
-                                        <div class="h-6 bg-white grid place-items-center">0</div>
-                                    </Show>
-                                    <div class="h-6 bg-white grid place-items-center">// {move || child.2.clone()}
-                                    </div>
-                                </div>
-                            </For>
-                        </div>
-                        <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
                             <button
                                 class=move || {
                                     format!(
@@ -246,7 +217,7 @@ pub fn App() -> impl IntoView {
                             <Memory memory=memory/>
                         </div>
 
-                        <Show when=move || message() != "">
+                        <Show when=move || message().is_empty()>
                             <div class="p-8 border bg-red-50 border-red-200 text-red-900 flex items-center gap-2">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -290,9 +261,9 @@ enum InstType {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum View {
+    Hex,
     Binary,
     Decoded,
-    Hex,
 }
 
 #[component]
@@ -307,8 +278,11 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
             })
             .collect()
     });
-    let view_state = RwSignal::new(View::Binary);
+    let view_state = RwSignal::new(View::Hex);
     let view_instruction = move |i_type, code: u32| {
+        let opcode = code & 0b111_1111;
+        let funct3 = code >> 12 & 0b111;
+        let funct7 = code >> 25 & 0b111_1111;
         view! {
             <div
                 class="grid bg-gray-200 gap-px"
@@ -340,61 +314,90 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                             (match i_type {
                                 Some(InstType::RType(r_type)) => {
                                     vec![
-                                        ("f7", 7, format!("")),
-                                        ("rs2", 5, format!("x{:02}", r_type.rs2())),
-                                        ("rs1", 5, format!("x{:02}", r_type.rs1())),
-                                        ("f3", 3, format!("")),
-                                        ("rd", 5, format!("x{:02}", r_type.rd())),
-                                        ("opcode", 7, format!("")),
+                                        ("f7", 7, format!("{funct7:07b}")),
+                                        (
+                                            "rs2",
+                                            5,
+                                            REGISTER_NAMES[r_type.rs2() as usize].to_string(),
+                                        ),
+                                        (
+                                            "rs1",
+                                            5,
+                                            REGISTER_NAMES[r_type.rs1() as usize].to_string(),
+                                        ),
+                                        ("f3", 3, format!("{funct3:03b}")),
+                                        ("rd", 5, REGISTER_NAMES[r_type.rd() as usize].to_string()),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
                                 Some(InstType::IType(i_type)) => {
                                     vec![
-                                        ("imm", 12, format!("x{:02}", i_type.imm())),
-                                        ("rs1", 5, format!("x{:02}", i_type.rs1())),
-                                        ("f3", 3, format!("")),
-                                        ("rd", 5, format!("x{:02}", i_type.rd())),
-                                        ("opcode", 7, format!("")),
+                                        ("imm", 12, format!("0x{:x}", i_type.imm())),
+                                        (
+                                            "rs1",
+                                            5,
+                                            REGISTER_NAMES[i_type.rs1() as usize].to_string(),
+                                        ),
+                                        ("f3", 3, format!("{funct3:03b}")),
+                                        ("rd", 5, REGISTER_NAMES[i_type.rd() as usize].to_string()),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
                                 Some(InstType::SType(s_type)) => {
                                     vec![
-                                        ("imm", 7, format!("x{:02}", s_type.imm())),
-                                        ("rs2", 5, format!("x{:02}", s_type.rs2())),
-                                        ("rs1", 5, format!("x{:02}", s_type.rs1())),
-                                        ("f3", 3, format!("")),
-                                        ("imm", 5, format!("x{:02}", s_type.imm())),
-                                        ("opcode", 7, format!("")),
+                                        ("imm", 7, format!("0x{:x}", s_type.imm())),
+                                        (
+                                            "rs2",
+                                            5,
+                                            REGISTER_NAMES[s_type.rs2() as usize].to_string(),
+                                        ),
+                                        (
+                                            "rs1",
+                                            5,
+                                            REGISTER_NAMES[s_type.rs1() as usize].to_string(),
+                                        ),
+                                        ("f3", 3, format!("{funct3:03b}")),
+                                        ("imm", 5, format!("0x{:x}", s_type.imm())),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
                                 Some(InstType::BType(b_type)) => {
                                     vec![
-                                        ("imm", 7, format!("x{:02}", b_type.imm())),
-                                        ("rs2", 5, format!("x{:02}", b_type.rs2())),
-                                        ("rs1", 5, format!("x{:02}", b_type.rs1())),
-                                        ("f3", 3, format!("")),
-                                        ("imm", 5, format!("x{:02}", b_type.imm())),
-                                        ("opcode", 7, format!("")),
+                                        ("imm", 7, format!("0x{:x}", b_type.imm())),
+                                        (
+                                            "rs2",
+                                            5,
+                                            REGISTER_NAMES[b_type.rs2() as usize].to_string(),
+                                        ),
+                                        (
+                                            "rs1",
+                                            5,
+                                            REGISTER_NAMES[b_type.rs1() as usize].to_string(),
+                                        ),
+                                        ("f3", 3, format!("{funct3:03b}")),
+                                        ("imm", 5, format!("0x{:x}", b_type.imm())),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
                                 Some(InstType::UType(u_type)) => {
                                     vec![
-                                        ("imm", 20, format!("x{:02}", u_type.imm())),
-                                        ("rd", 5, format!("x{:02}", u_type.rd())),
-                                        ("opcode", 7, format!("")),
+                                        ("imm", 20, format!("0x{:x}", u_type.imm())),
+                                        ("rd", 5, REGISTER_NAMES[u_type.rd() as usize].to_string()),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
                                 Some(InstType::JType(j_type)) => {
                                     vec![
-                                        ("imm", 20, format!("x{:02}", j_type.imm())),
-                                        ("rd", 5, format!("x{:02}", j_type.rd())),
-                                        ("opcode", 7, format!("")),
+                                        ("imm", 20, format!("0x{:x}", j_type.imm())),
+                                        ("rd", 5, REGISTER_NAMES[j_type.rd() as usize].to_string()),
+                                        ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
-                                None => vec![("unknown", 32, format!(""))],
+                                None => vec![("unknown", 32, format!("0x{code:08x}"))],
                             })
                                 .into_iter()
                                 .enumerate()
+                                .collect::<Vec<_>>()
                         }
 
                         key=|(index, _)| *index
@@ -404,10 +407,23 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                             class="grid"
                             style=("grid-column", move || format!("{} span", child.1.1))
                         >
-                            <Show when=move || { matches!(view_state(), View::Decoded) }>
-                                <div class="h-6 bg-white grid place-items-center">0</div>
-                            </Show>
-                            <div class="h-6 bg-white grid place-items-center">{child.1.0}</div>
+                            {move || {
+                                if matches!(view_state(), View::Decoded) {
+                                    Some(
+                                        view! {
+                                            <div class="h-6 bg-white grid place-items-center font-mono text-sm">
+                                                {child.1.2.clone()}
+                                            </div>
+                                        },
+                                    )
+                                } else {
+                                    None
+                                }
+                            }}
+
+                            <div class="h-6 bg-white grid place-items-center">
+                                {move || child.1.0}
+                            </div>
                         </div>
                     </For>
 
@@ -421,7 +437,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
             <div class="text-center">"Instructions"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
-                {[View::Binary, View::Decoded, View::Hex]
+                {[View::Hex, View::Binary, View::Decoded]
                     .map(|x| {
                         view! {
                             <button
@@ -553,11 +569,11 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
 
             </div>
             <div class="grid gap-y-px border-2 border-gray-900 bg-gray-900">
-                <div class="grid grid-cols-[3rem_auto] bg-gray-100 font-medium">
+                <div class="grid grid-cols-[4rem_auto] bg-gray-100 font-medium">
                     <div class="py-2 text-center border-r-2 border-gray-900 ">"reg"</div>
                     <div class="py-2 text-center">"value"</div>
                 </div>
-                <div class="grid grid-cols-[3rem_auto] bg-white font-mono">
+                <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
                     <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">"pc"</p>
                     {move || view_register(registers()[PC], view_state())}
 
@@ -567,9 +583,9 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                     key=|(index, _)| *index
                     let:child
                 >
-                    <div class="grid grid-cols-[3rem_auto] bg-white font-mono">
+                    <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
                         <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
-                            {format!("x{}", child.0)}
+                            {REGISTER_NAMES[child.0]}
                         </p>
                         {move || view_register(child.1, view_state())}
                     </div>
