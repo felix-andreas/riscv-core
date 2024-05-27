@@ -897,9 +897,24 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                     "value"
                 </span>
                 <For
-                    each=move || (0..n_rows)
+                    each=move || {
+                        let _ = view_state();
+                        view_state.track();
+                        0..n_rows
+                    }
 
-                    key=|row| *row
+                    // HACK: we add n_rows to force re-render
+                    key=move |row| {
+                        *row
+                            + n_rows
+                                * match view_state() {
+                                    ViewState::Bytes => 0,
+                                    ViewState::U32 => 1,
+                                    ViewState::I32 => 2,
+                                }
+                    }
+
+                    // HACK: we wrap in view make animation play on re-render
                     children=move |row| {
                         view! {
                             <span class="bg-white text-right pr-2 font-semibold border-r border-gray-900">
@@ -912,16 +927,19 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                                     let value = create_memo(move |_| {
                                         memory
                                             .with(|memory| -> String {
-                                                let index = BYTES_PER_ROW * row + col;
                                                 match view_state() {
-                                                    ViewState::Bytes => format!("{:02x}", memory[index]),
+                                                    ViewState::Bytes => {
+                                                        format!("{:02x}", memory[BYTES_PER_ROW * row + col])
+                                                    }
                                                     ViewState::U32 => {
+                                                        let index = BYTES_PER_ROW * row + 4 * col;
                                                         u32::from_le_bytes(
                                                                 memory[index..index + 4].try_into().unwrap(),
                                                             )
                                                             .to_string()
                                                     }
                                                     ViewState::I32 => {
+                                                        let index = BYTES_PER_ROW * row + 4 * col;
                                                         i32::from_le_bytes(
                                                                 memory[index..index + 4].try_into().unwrap(),
                                                             )
@@ -930,19 +948,11 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                                                 }
                                             })
                                     });
-                                    view! {
-                                        // note we must create reactive variable here to force render for animation
-
-                                        {move || {
-                                            view! {
-                                                <span
-                                                    class=" text-center transition-all bg-white"
-                                                    style="animation: 1200ms appear;"
-                                                >
-                                                    {value()}
-                                                </span>
-                                            }
-                                        }}
+                                    move || {
+                                        html::span()
+                                            .style("animation", "1200ms appear")
+                                            .classes("text-center transition-all bg-white")
+                                            .child(value())
                                     }
                                 }
                             />
