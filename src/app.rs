@@ -76,7 +76,7 @@ pub fn App() -> impl IntoView {
 
     let selected_program = RwSignal::new(0);
     let frequencies = [1, 2, 4, 8, 16];
-    let frequency = RwSignal::new(frequencies[0]);
+    let frequency = RwSignal::new(frequencies[1]);
 
     let stop = move || match running_state.get_untracked() {
         RunningState::Idle => {}
@@ -175,6 +175,18 @@ pub fn App() -> impl IntoView {
             <div class="">
                 <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
                     <div class="p-8 grid gap-4">
+                        <div class="grid gap-4">
+                            <div class="grid gap-4 grid-cols-2 items-start">
+                                <div class="p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
+                                    <Program memory=memory pc=pc/>
+                                </div>
+                                <div class="p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
+                                    <Registers registers=registers/>
+                                </div>
+                            </div>
+                            <Memory memory=memory/>
+                        </div>
+
                         <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
                             <button
                                 class=move || {
@@ -273,10 +285,10 @@ pub fn App() -> impl IntoView {
                             <div class="ml-auto grid place-items-center opacity-15">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
-                                    width="16"
-                                    height="16"
+                                    width="20"
+                                    height="20"
                                     viewBox="0 0 32 32"
-                                    class="rounded-full"
+                                    class="rounded-full transform -rotate-90"
                                 >
                                     <circle
                                         style=move || {
@@ -321,16 +333,19 @@ pub fn App() -> impl IntoView {
                                 <div
                                     id="programs-frequency"
                                     popover
-                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
+                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-2xl"
                                 >
                                     <div class="grid">
+                                        <div class="text-center bg-black text-white px-24 py-6 font-semibold">
+                                            "CPU frequency"
+                                        </div>
                                         {frequencies
                                             .iter()
                                             .enumerate()
                                             .map(|(i, x)| {
                                                 view! {
                                                     <button
-                                                        class="p-8 hover:bg-gray-100"
+                                                        class="p-4 hover:bg-gray-100"
                                                         on:click=move |_| frequency.set(frequencies[i])
                                                     >
                                                         {format!("{x} Hz")}
@@ -368,13 +383,16 @@ pub fn App() -> impl IntoView {
                                     class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
                                 >
                                     <div class="grid">
+                                        <div class="text-center bg-black text-white px-24 py-6 font-semibold">
+                                            "Select a program"
+                                        </div>
                                         {programs
                                             .iter()
                                             .enumerate()
                                             .map(|(i, x)| {
                                                 view! {
                                                     <button
-                                                        class="p-8 hover:bg-gray-100"
+                                                        class="p-4 hover:bg-gray-100"
                                                         on:click=move |_| load(i)
                                                     >
                                                         {format!("{}", x.0)}
@@ -386,12 +404,6 @@ pub fn App() -> impl IntoView {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="flex gap-4 justify-center items-start">
-                            <Program memory=memory pc=pc/>
-                            <Registers registers=registers/>
-                            <Memory memory=memory/>
                         </div>
 
                         <Show when=move || !message().is_empty()>
@@ -445,10 +457,11 @@ enum View {
 
 #[component]
 pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
-    let start = move || pc() / (4 * 16) * (4 * 16);
+    let n = 8;
+    let start = move || pc() / (4 * n) * (4 * n);
     let program: Memo<Vec<u32>> = create_memo(move |_| {
         logging::log!("calc program!");
-        (0..16)
+        (0..n)
             .filter_map(|i| {
                 let address = start() + 4 * i;
                 crate::utils::load_word(&memory(), address).ok()
@@ -463,7 +476,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         view! {
             <div
                 class="grid bg-gray-200 gap-px"
-                style="grid-template-columns: repeat(32, 1fr); height: 49px; width: 415px;"
+                style="grid-template-columns: repeat(32, 1fr); height: 52px; width: 415px;"
             >
                 <Show when=move || { matches!(view_state(), View::Binary) }>
                     <For
@@ -485,6 +498,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                         {format!("{code:08x}")}
                     </div>
                 </Show>
+
                 <Show when=move || { !matches!(view_state(), View::Hex) }>
                     <For
                         each=move || {
@@ -611,7 +625,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
     };
 
     view! {
-        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
+        <div class="grid gap-2">
             <div class="text-center">"Instructions"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[View::Hex, View::Binary, View::Decoded]
@@ -644,19 +658,18 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
 
             </div>
             <div
-                class="relative grid grid-cols-[3rem_3rem_auto] border-2 border-gray-900 bg-gray-900"
-                style="gap: 1px"
+                class="relative grid border-2 border-gray-900 bg-gray-900"
+                style="gap: 1px; grid-template-columns: auto auto 415px;"
             >
                 <div
                     class="absolute left-0 right-0 ring-4 ring-blue-300 transition-all pointer-events-none"
                     style=move || {
-                        logging::log!("pc {}: start: {}, {}", pc(), start(), (pc() - start()) / 4);
-                        format!("height: 49px; top: {}px;", 41 + 50 * ((pc() - start()) / 4))
+                        format!("height: 52px; top: {}px;", 41 + 50 * ((pc() - start()) / 4))
                     }
                 >
                 </div>
-                <div class="bg-gray-100 py-2 text-center font-medium">addr</div>
-                <div class="bg-gray-100 py-2 text-center font-medium">instr</div>
+                <div class="bg-gray-100 py-2 text-center font-medium">"addr"</div>
+                <div class="bg-gray-100 py-2 text-center font-medium">"instr"</div>
                 <div class="bg-gray-100 py-2 text-center font-medium" style="width: 415;">
                     {move || match view_state() {
                         View::Binary => "binary",
@@ -717,7 +730,7 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
     let view_state = RwSignal::new(ViewState::Bytes);
 
     view! {
-        <div class="p-4 grid gap-2 bg-white ring-1 ring-gray-500/5 shadow-sm">
+        <div class="grid gap-2">
             <div class="text-center">"Registers"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[ViewState::Bytes, ViewState::U32, ViewState::I32]
@@ -748,33 +761,54 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                     })}
 
             </div>
-            <div class="grid gap-y-px border-2 border-gray-900 bg-gray-900">
-                <div class="grid grid-cols-[4rem_auto] bg-gray-100 font-medium">
-                    <div class="py-2 text-center border-r-2 border-gray-900 ">"reg"</div>
-                    <div class="py-2 text-center">"value"</div>
-                </div>
-                <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
-                    <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">"pc"</p>
-                    {move || view_register(registers()[PC], view_state())}
-
-                </div>
-                <For
-                    each=move || registers().into_iter().enumerate()
-                    key=|(index, _)| *index
-                    children=move |(index, _)| {
-                        let value = create_memo(move |_| {
-                            registers.with(|registers| registers[index])
-                        });
+            <div class="grid grid-cols-2">
+                {(0..2)
+                    .map(|i| {
                         view! {
-                            <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
-                                <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
-                                    {REGISTER_NAMES[index]}
-                                </p>
-                                {move || view_register(value(), view_state())}
+                            <div class="grid gap-y-px border-2 border-gray-900 bg-gray-900">
+                                <div class="grid grid-cols-[4rem_auto] bg-gray-100 font-medium">
+                                    <div class="py-2 text-center border-r-2 border-gray-900 ">
+                                        "reg"
+                                    </div>
+                                    <div class="py-2 text-center">"value"</div>
+                                </div>
+                                <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
+                                    <p class=" text-right px-2 border-r-2 border-gray-900 font-semibold">
+                                        {move || if i == 0 { "pc" } else { "-" }}
+                                    </p>
+                                    {move || {
+                                        if i == 0 {
+                                            view_register(registers()[PC], view_state()).into_view()
+                                        } else {
+                                            "".into_view()
+                                        }
+                                    }}
+
+                                </div>
+                                <For
+                                    each=move || (0..16)
+
+                                    key=|index| *index
+                                    children=move |index| {
+                                        let index = index + 16 * i;
+                                        let value = create_memo(move |_| {
+                                            registers.with(|registers| registers[index])
+                                        });
+                                        view! {
+                                            <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
+                                                <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
+                                                    {REGISTER_NAMES[index]}
+                                                </p>
+                                                {move || view_register(value(), view_state())}
+                                            </div>
+                                        }
+                                    }
+                                />
+
                             </div>
                         }
-                    }
-                />
+                    })
+                    .collect_view()}
 
             </div>
         </div>
@@ -806,6 +840,16 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
     }
 
     let view_state = RwSignal::new(ViewState::Bytes);
+    const BYTES_PER_ROW: usize = 32;
+    let n_rows = 8;
+    let n_cols = move || {
+        BYTES_PER_ROW
+            / (match view_state() {
+                ViewState::Bytes => 1,
+                ViewState::U32 => 4,
+                ViewState::I32 => 4,
+            })
+    };
 
     view! {
         <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
@@ -839,50 +883,69 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                     })}
 
             </div>
-            <div class="grid grid-cols-[3fr_2fr_2fr_2fr_2fr] gap-px bg-gray-900 border-2 border-gray-900 font-mono">
+            <div
+                class="grid gap-px bg-gray-900 border-2 border-gray-900 font-mono"
+                style=move || format!("grid-template-columns: 4rem repeat({}, 1fr);", n_cols())
+            >
                 <span class="py-2 font-sans font-medium bg-gray-100 text-center border-r border-gray-900">
                     "addr"
                 </span>
-                <span class="py-2 font-sans font-medium bg-gray-100 text-center col-span-4">
+                <span
+                    class="py-2 font-sans font-medium bg-gray-100 text-center"
+                    style=move || format!("grid-column: span {}", n_cols())
+                >
                     "value"
                 </span>
                 <For
-                    each=move || {
-                        memory
-                            .with(|memory| {
-                                memory
-                                    .chunks(4)
-                                    .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
-                                    .take(64)
-                                    .enumerate()
-                                    .collect::<Vec<_>>()
-                            })
-                    }
+                    each=move || (0..n_rows)
 
-                    key=|(index, _)| *index
-                    children=move |(index, _)| {
-                        let value = create_memo(move |_| {
-                            memory
-                                .with(|memory| -> [u8; 4] {
-                                    memory[4 * index..4 * index + 4].try_into().unwrap()
-                                })
-                        });
+                    key=|row| *row
+                    children=move |row| {
                         view! {
-                            <span class="w-12 bg-white text-center font-semibold border-r border-gray-900">
-                                {move || format!("{:02x}", 4 * index)}
+                            <span class="bg-white text-right pr-2 font-semibold border-r border-gray-900">
+                                {move || format!("{:02x}", BYTES_PER_ROW * row)}
                             </span>
-                            <span class="w-8 bg-white text-center">
-                                {move || format!("{:02x}", value()[0])}
-                            </span>
-                            <span class="w-8 bg-white text-center">
-                                {move || format!("{:02x}", value()[1])}
-                            </span>
-                            <span class="w-8 bg-white text-center">
-                                {move || format!("{:02x}", value()[2])}
-                            </span>
-                            <span class="w-8 bg-white text-center">
-                                {move || format!("{:02x}", value()[3])}
-                            </span>
+                            <For
+                                each=move || (0..n_cols())
+                                key=|index| *index
+                                children=move |col| {
+                                    let value = create_memo(move |_| {
+                                        memory
+                                            .with(|memory| -> String {
+                                                let index = BYTES_PER_ROW * row + col;
+                                                match view_state() {
+                                                    ViewState::Bytes => format!("{:02x}", memory[index]),
+                                                    ViewState::U32 => {
+                                                        u32::from_le_bytes(
+                                                                memory[index..index + 4].try_into().unwrap(),
+                                                            )
+                                                            .to_string()
+                                                    }
+                                                    ViewState::I32 => {
+                                                        i32::from_le_bytes(
+                                                                memory[index..index + 4].try_into().unwrap(),
+                                                            )
+                                                            .to_string()
+                                                    }
+                                                }
+                                            })
+                                    });
+                                    view! {
+                                        // note we must create reactive variable here to force render for animation
+
+                                        {move || {
+                                            view! {
+                                                <span
+                                                    class=" text-center transition-all bg-white"
+                                                    style="animation: 1200ms appear;"
+                                                >
+                                                    {value()}
+                                                </span>
+                                            }
+                                        }}
+                                    }
+                                }
+                            />
                         }
                     }
                 />
