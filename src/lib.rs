@@ -355,7 +355,7 @@ pub fn step(registers: &mut Registers, memory: &mut Memory) -> Result<bool, Erro
         Instruction::ECALL => {
             let x3_value = registers[3];
             if x3_value > 1 {
-                dump_registers(registers);
+                println!("{}", dump_registers(registers));
                 panic!("Test fails ECALL(x3: {:08x})", x3_value);
             }
         }

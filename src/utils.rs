@@ -2,10 +2,10 @@ use std::convert::TryInto;
 
 use crate::{Memory, Registers, MEMORY_START, PC};
 
-pub const REGISTER_NAMES: [&str; 32] = [
+pub const REGISTER_NAMES: [&str; 33] = [
     "zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2", "s0", "s1", "a0", "a1", "a2", "a3", "a4",
     "a5", "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "t3", "t4",
-    "t5", "t6",
+    "t5", "t6", "pc",
 ];
 
 pub fn sign_extend(number: u32, bit: u8) -> u32 {
@@ -53,26 +53,26 @@ pub fn store_half_word(memory: &mut Memory, address: u32, value: u16) -> Result<
 
 pub fn store_byte(memory: &mut Memory, address: u32, value: u8) -> Result<(), MemoryError> {
     let index = address as usize - MEMORY_START;
-    *memory
-        .get_mut(index)
-        .ok_or(MemoryError { address })? = value;
+    *memory.get_mut(index).ok_or(MemoryError { address })? = value;
     Ok(())
 }
 
-pub fn dump_registers(registers: &Registers) {
+pub fn dump_registers(registers: &Registers) -> String {
+    let mut result = String::new();
     let filler = "─".repeat(15);
-    println!("╭{0:}┬{0:}┬{0:}┬{0:}╮", filler);
-    println!(
-        "│   pc {0:08x} │{1:}│{1:}│{1:}│",
+    result += &format!("╭{0:}┬{0:}┬{0:}┬{0:}╮\n", filler);
+    result += &format!(
+        "│   pc {0:08x} │{1:}│{1:}│{1:}│\n",
         registers[PC],
         " ".repeat(15)
     );
     for i in 0..8 {
         for j in 0..4 {
             let index = i + j * 8;
-            print!("│ {:>4} {:08x} ", REGISTER_NAMES[index], registers[index]);
+            result += &format!("│ {:>4} {:08x} ", REGISTER_NAMES[index], registers[index]);
         }
-        println!("│");
+        result += "│\n";
     }
-    println!("╰{0:}┴{0:}┴{0:}┴{0:}╯", filler);
+    result += &format!("╰{0:}┴{0:}┴{0:}┴{0:}╯\n", filler);
+    result
 }

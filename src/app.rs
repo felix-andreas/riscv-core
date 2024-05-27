@@ -5,7 +5,7 @@ use leptos_meta::*;
 
 use crate::{
     formats::{BType, IType, JType, RType, SType, UType},
-    utils::REGISTER_NAMES,
+    utils::{dump_registers, REGISTER_NAMES},
     Error, Instruction, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC,
 };
 
@@ -70,6 +70,7 @@ pub fn App() -> impl IntoView {
         logging::log!("pc {}", registers()[PC]);
 
         registers.update(|registers| {
+            logging::log!("registers\n{}", dump_registers(registers));
             let result = crate::step(registers, &mut memory());
             logging::log!("result {:?}", result);
             state.set(match result {
@@ -114,12 +115,12 @@ pub fn App() -> impl IntoView {
 
             <div class="">
                 <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
-                    <div class="p-8 grid gap-4 ">
-                        <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
+                    <div class="p-8 grid gap-4">
+                        <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
                             <button
                                 class=move || {
                                     format!(
-                                        "w-28 py-1 font-medium rounded-full text-lg text-white disabled:opacity-50 flex justify-center items-center gap-2 {}",
+                                        "w-28 py-1 font-medium text-lg text-white disabled:opacity-50 flex justify-center items-center gap-2 {}",
                                         match running_state() {
                                             RunningState::Idle => "bg-green-600 hover:bg-green-500",
                                             RunningState::Running => "bg-red-600 hover:bg-red-500",
@@ -170,7 +171,7 @@ pub fn App() -> impl IntoView {
 
                             </button>
                             <button
-                                class="px-5 py-2 border-2 border-gray-900 rounded-full font-medium text-lg disabled:opacity-50 flex items-center gap-3"
+                                class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3"
                                 on:click=step
                                 disabled=move || {
                                     matches!(state(), State::Finished | State::Errored(_))
@@ -191,7 +192,7 @@ pub fn App() -> impl IntoView {
                                 Step
                             </button>
                             <button
-                                class="px-5 py-2 bg-black rounded-full font-medium text-lg text-white disabled:opacity-50 flex items-center gap-3"
+                                class="px-5 py-2 bg-black font-medium text-lg text-white disabled:opacity-15 flex items-center gap-3"
                                 on:click=move |_| reset()
                                 disabled=move || matches!(state(), State::Fresh)
                             >
@@ -207,8 +208,36 @@ pub fn App() -> impl IntoView {
                                         d="M18 28A12 12 0 1 0 6 16v6.2l-3.6-3.6L1 20l6 6l6-6l-1.4-1.4L8 22.2V16a10 10 0 1 1 10 10Z"
                                     ></path>
                                 </svg>
-                                Reset
+                                "Reset"
                             </button>
+
+                            <div class="ml-auto relative">
+                                <button
+                                    popovertarget="programs-dropdown"
+                                    class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
+                                    on:click=move |_| {}
+                                >
+                                    "Fibonacci"
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 32 32"
+                                    >
+                                        <path
+                                            fill="currentColor"
+                                            d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
+                                        ></path>
+                                    </svg>
+                                </button>
+                                <div
+                                    id="programs-dropdown"
+                                    popover
+                                    class="p-8 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
+                                >
+                                    Popover content
+                                </div>
+                            </div>
                         </div>
 
                         <div class="flex gap-4 justify-center items-start">
@@ -217,7 +246,7 @@ pub fn App() -> impl IntoView {
                             <Memory memory=memory/>
                         </div>
 
-                        <Show when=move || message().is_empty()>
+                        <Show when=move || !message().is_empty()>
                             <div class="p-8 border bg-red-50 border-red-200 text-red-900 flex items-center gap-2">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -286,7 +315,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         view! {
             <div
                 class="grid bg-gray-200 gap-px"
-                style="grid-template-columns: repeat(32, 1fr); height: 49px; width: 543px;"
+                style="grid-template-columns: repeat(32, 1fr); height: 49px; width: 415px;"
             >
                 <Show when=move || { matches!(view_state(), View::Binary) }>
                     <For
@@ -297,7 +326,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                         key=|(i, _)| *i
                         let:child
                     >
-                        <div class="w-4 h-6 bg-gray-50 text-sm font-mono grid place-items-center">
+                        <div class="w-3 h-6 bg-gray-50 text-sm font-mono grid place-items-center">
                             {child.1}
                         </div>
                     </For>
@@ -357,7 +386,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                                             REGISTER_NAMES[s_type.rs1() as usize].to_string(),
                                         ),
                                         ("f3", 3, format!("{funct3:03b}")),
-                                        ("imm", 5, format!("0x{:x}", s_type.imm())),
+                                        ("imm", 5, format!("")),
                                         ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
@@ -375,7 +404,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                                             REGISTER_NAMES[b_type.rs1() as usize].to_string(),
                                         ),
                                         ("f3", 3, format!("{funct3:03b}")),
-                                        ("imm", 5, format!("0x{:x}", b_type.imm())),
+                                        ("imm", 5, format!("")),
                                         ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
@@ -434,7 +463,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
     };
 
     view! {
-        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
+        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
             <div class="text-center">"Instructions"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[View::Hex, View::Binary, View::Decoded]
@@ -471,7 +500,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                 style="gap: 1px"
             >
                 <div
-                    class="absolute left-0 right-0 ring-4 ring-blue-300 transition-all"
+                    class="absolute left-0 right-0 ring-4 ring-blue-300 transition-all pointer-events-none"
                     style=move || {
                         format!("height: 49px; top: {}px;", 41 + 50 * ((pc() - start()) / 4))
                     }
@@ -479,7 +508,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                 </div>
                 <div class="bg-gray-100 py-2 text-center font-medium">addr</div>
                 <div class="bg-gray-100 py-2 text-center font-medium">instr</div>
-                <div class="bg-gray-100 py-2 text-center font-medium" style="width: 543px;">
+                <div class="bg-gray-100 py-2 text-center font-medium" style="width: 415;">
                     {move || match view_state() {
                         View::Binary => "binary",
                         View::Decoded => "decoded",
@@ -523,21 +552,22 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
             ViewState::Bytes => view_word(word).into_view(),
             ViewState::U32 => view! {
                 <div class="grid place-items-center" style="width: 131px;">
-                    {format!("{}", word)}
+                    {move || format!("{}", word)}
                 </div>
             }
             .into_view(),
             ViewState::I32 => view! {
                 <div class="grid place-items-center" style="width: 131px;">
-                    {format!("{}", i32::from_ne_bytes(word.to_ne_bytes()))}
+                    {move || format!("{}", i32::from_ne_bytes(word.to_ne_bytes()))}
                 </div>
             }
             .into_view(),
         }
     }
     let view_state = RwSignal::new(ViewState::Bytes);
+
     view! {
-        <div class="p-4 grid gap-2 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
+        <div class="p-4 grid gap-2 bg-white ring-1 ring-gray-500/5 shadow-sm">
             <div class="text-center">"Registers"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[ViewState::Bytes, ViewState::U32, ViewState::I32]
@@ -579,17 +609,23 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
 
                 </div>
                 <For
-                    each=move || registers().into_iter().take(PC).enumerate()
+                    each=move || registers().into_iter().enumerate()
                     key=|(index, _)| *index
-                    let:child
-                >
-                    <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
-                        <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
-                            {REGISTER_NAMES[child.0]}
-                        </p>
-                        {move || view_register(child.1, view_state())}
-                    </div>
-                </For>
+                    children=move |(index, _)| {
+                        let value = create_memo(move |_| {
+                            registers.with(|registers| registers[index])
+                        });
+                        view! {
+                            <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
+                                <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
+                                    {REGISTER_NAMES[index]}
+                                </p>
+                                {move || view_register(value(), view_state())}
+                            </div>
+                        }
+                    }
+                />
+
             </div>
         </div>
     }
@@ -622,7 +658,7 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
     let view_state = RwSignal::new(ViewState::Bytes);
 
     view! {
-        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 rounded-lg shadow-sm">
+        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
             <div class="text-center">"RAM"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[ViewState::Bytes, ViewState::U32, ViewState::I32]
