@@ -1,11 +1,13 @@
 #![allow(non_snake_case)]
 
-use leptos::*;
+use std::time::Duration;
+
+use leptos::{leptos_dom::helpers::IntervalHandle, *};
 use leptos_meta::*;
 
 use crate::{
     formats::{BType, IType, JType, RType, SType, UType},
-    utils::{dump_registers, REGISTER_NAMES},
+    utils::REGISTER_NAMES,
     Error, Instruction, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC,
 };
 
@@ -20,21 +22,12 @@ enum State {
 #[derive(Debug, Clone)]
 enum RunningState {
     Idle,
-    Running,
+    Running(IntervalHandle),
 }
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
-
-    let code: Vec<u8> = [
-        0xfd010113, 0x02812623, 0x03010413, 0x00a00793, 0xfef42023, 0xfe042623, 0x00100793,
-        0xfef42423, 0xfe042783, 0x00079663, 0xfec42783, 0x04c0006f,
-    ]
-    .map(u32::to_le_bytes)
-    .into_iter()
-    .flatten()
-    .collect();
 
     let state = RwSignal::new(State::Fresh);
     let running_state = RwSignal::new(RunningState::Idle);
@@ -54,37 +47,103 @@ pub fn App() -> impl IntoView {
     let pc = Signal::derive(move || registers()[PC]);
     let memory: RwSignal<Memory> = RwSignal::new([0; MEMORY_SIZE]);
 
+    let programs: &[(&'static str, &'static [u32])] = &[
+        (
+            "Fibonacci",
+            &[
+                0xff010113, 0x02812623, 0x03010413, 0x00a00793, 0xfef42023, 0xfe042623, 0x00100793,
+                0xfef42423, 0xfe042783, 0x00079663, 0xfec42783, 0x04c0006f,
+            ],
+        ),
+        (
+            "fib_opt",
+            &[
+                0x00900793, 0x00100513, 0x00000713, 0x00050693, 0x00e50533, 0xfff78793, 0x00068713,
+                0xfe0798e3, 0x00008067,
+            ],
+        ),
+        (
+            "Bubble sort",
+            &[
+                0xff010113, 0x00500793, 0x00f12023, 0x00100793, 0x00f12223, 0x00200793, 0x00f12423,
+                0x00400793, 0x00f12623, 0x00010513, 0x00c10613, 0x00000893, 0x00100813, 0x0340006f,
+                0x00478793, 0x02c78063, 0x0007a703, 0x0047a683, 0xfee6d8e3, 0x00d7a023, 0x00e7a223,
+                0x00080593, 0xfe1ff06f, 0x00058c63, 0xffc60613, 0x00a60863, 0x00050793, 0x00088593,
+                0xfd1ff06f, 0x01010113, 0x00008067,
+            ],
+        ),
+    ];
+
+    let selected_program = RwSignal::new(0);
+    let frequencies = [1, 2, 4, 8, 16];
+    let frequency = RwSignal::new(frequencies[0]);
+
+    let stop = move || match running_state.get_untracked() {
+        RunningState::Idle => {}
+        RunningState::Running(handle) => {
+            handle.clear();
+            running_state.set(RunningState::Idle)
+        }
+    };
+
     let reset = move || {
+        stop();
         state.set(State::Fresh);
         registers.update(|registers| {
             registers.copy_from_slice(&[0; 33]);
             registers[PC] = MEMORY_START as u32;
+            registers[2] = MEMORY_START as u32 + 0xa0;
         });
         memory.update(|memory| {
             memory.copy_from_slice(&[0; MEMORY_SIZE]);
-            memory[..code.len()].copy_from_slice(&code);
+            let program = programs[selected_program.get_untracked()]
+                .1
+                .iter()
+                .copied()
+                .map(u32::to_le_bytes)
+                .flatten()
+                .collect::<Vec<u8>>();
+            for (m, p) in memory[..program.len()].iter_mut().zip(program) {
+                *m = p;
+            }
         });
     };
 
-    let step = move |_| {
-        logging::log!("pc {}", registers()[PC]);
+    let load = move |index| {
+        selected_program.set(index);
+        reset();
+    };
 
-        registers.update(|registers| {
-            logging::log!("registers\n{}", dump_registers(registers));
-            let result = crate::step(registers, &mut memory());
-            logging::log!("result {:?}", result);
-            state.set(match result {
-                Ok(false) => State::Started,
-                Ok(true) => State::Finished,
-                Err(error) => State::Errored(error),
+    let step = move || {
+        leptos::batch(|| {
+            update!(|registers, memory| {
+                let result = crate::step(registers, memory);
+                state.set(match result {
+                    Ok(false) => State::Started,
+                    Ok(true) => {
+                        stop();
+                        State::Finished
+                    }
+                    Err(error) => {
+                        stop();
+                        State::Errored(error)
+                    }
+                });
             });
         });
-        memory.update(|_| {});
-        logging::log!("after {}", registers()[PC]);
     };
+
     let press_run_button = move |_| match running_state() {
-        RunningState::Idle => running_state.set(RunningState::Running),
-        RunningState::Running => running_state.set(RunningState::Idle),
+        RunningState::Idle => {
+            running_state.set(RunningState::Running(
+                leptos::set_interval_with_handle(
+                    move || step(),
+                    Duration::from_secs_f64(1.0 / frequency() as f64),
+                )
+                .unwrap(),
+            ));
+        }
+        RunningState::Running(_) => stop(),
     };
 
     reset();
@@ -123,7 +182,7 @@ pub fn App() -> impl IntoView {
                                         "w-28 py-1 font-medium text-lg text-white disabled:opacity-50 flex justify-center items-center gap-2 {}",
                                         match running_state() {
                                             RunningState::Idle => "bg-green-600 hover:bg-green-500",
-                                            RunningState::Running => "bg-red-600 hover:bg-red-500",
+                                            RunningState::Running(_) => "bg-red-600 hover:bg-red-500",
                                         },
                                     )
                                 }
@@ -151,7 +210,7 @@ pub fn App() -> impl IntoView {
                                             Run
                                         }
                                     }
-                                    RunningState::Running => {
+                                    RunningState::Running(_) => {
                                         view! {
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
@@ -172,7 +231,7 @@ pub fn App() -> impl IntoView {
                             </button>
                             <button
                                 class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3"
-                                on:click=step
+                                on:click=move |_| step()
                                 disabled=move || {
                                     matches!(state(), State::Finished | State::Errored(_))
                                 }
@@ -211,13 +270,86 @@ pub fn App() -> impl IntoView {
                                 "Reset"
                             </button>
 
-                            <div class="ml-auto relative">
+                            <div class="ml-auto grid place-items-center opacity-15">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 32 32"
+                                    class="rounded-full"
+                                >
+                                    <circle
+                                        style=move || {
+                                            match running_state() {
+                                                RunningState::Idle => "".into(),
+                                                RunningState::Running(_) => {
+                                                    format!(
+                                                        "animation: clock-animation {}s linear infinite;",
+                                                        1.0 / frequency() as f64,
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        class="animation"
+                                        cx="16"
+                                        cy="16"
+                                        r="16"
+                                    ></circle>
+                                </svg>
+                            </div>
+
+                            <div class="relative">
                                 <button
-                                    popovertarget="programs-dropdown"
-                                    class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
+                                    popovertarget="programs-frequency"
+                                    class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
                                     on:click=move |_| {}
                                 >
-                                    "Fibonacci"
+                                    {move || format!("{} Hz", frequency())}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="24"
+                                        height="24"
+                                        viewBox="0 0 32 32"
+                                    >
+                                        <path
+                                            fill="currentColor"
+                                            d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
+                                        ></path>
+                                    </svg>
+                                </button>
+                                <div
+                                    id="programs-frequency"
+                                    popover
+                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
+                                >
+                                    <div class="grid">
+                                        {frequencies
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(i, x)| {
+                                                view! {
+                                                    <button
+                                                        class="p-8 hover:bg-gray-100"
+                                                        on:click=move |_| frequency.set(frequencies[i])
+                                                    >
+                                                        {format!("{x} Hz")}
+                                                    </button>
+                                                }
+                                            })
+                                            .collect_view()}
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <button
+                                    popovertarget="programs-dropdown"
+                                    class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
+                                    on:click=move |_| {}
+                                >
+                                    {move || programs[selected_program()].0}
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         width="24"
@@ -233,9 +365,25 @@ pub fn App() -> impl IntoView {
                                 <div
                                     id="programs-dropdown"
                                     popover
-                                    class="p-8 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
+                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
                                 >
-                                    Popover content
+                                    <div class="grid">
+                                        {programs
+                                            .iter()
+                                            .enumerate()
+                                            .map(|(i, x)| {
+                                                view! {
+                                                    <button
+                                                        class="p-8 hover:bg-gray-100"
+                                                        on:click=move |_| load(i)
+                                                    >
+                                                        {format!("{}", x.0)}
+                                                    </button>
+                                                }
+                                            })
+                                            .collect_view()}
+
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -297,13 +445,13 @@ enum View {
 
 #[component]
 pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
-    let start = move || pc() / 16 * 16;
-    let program: Signal<Vec<u32>> = Signal::derive(move || {
-        let memory = memory();
+    let start = move || pc() / (4 * 16) * (4 * 16);
+    let program: Memo<Vec<u32>> = create_memo(move |_| {
+        logging::log!("calc program!");
         (0..16)
             .filter_map(|i| {
                 let address = start() + 4 * i;
-                crate::utils::load_word(&memory, address).ok()
+                crate::utils::load_word(&memory(), address).ok()
             })
             .collect()
     });
@@ -471,7 +619,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                         view! {
                             <button
                                 on:click=move |_| view_state.set(x)
-                                style="height: 49px;"
+                                style="height: 24px;"
                                 class=move || {
                                     format!(
                                         "p1 {}",
@@ -485,9 +633,9 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                             >
 
                                 {match x {
-                                    View::Binary => "Binary",
-                                    View::Decoded => "Decoded",
-                                    View::Hex => "Hex",
+                                    View::Hex => "hex",
+                                    View::Binary => "binary",
+                                    View::Decoded => "decoded",
                                 }}
 
                             </button>
@@ -502,6 +650,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                 <div
                     class="absolute left-0 right-0 ring-4 ring-blue-300 transition-all pointer-events-none"
                     style=move || {
+                        logging::log!("pc {}: start: {}, {}", pc(), start(), (pc() - start()) / 4);
                         format!("height: 49px; top: {}px;", 41 + 50 * ((pc() - start()) / 4))
                     }
                 >
@@ -516,24 +665,25 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                     }}
 
                 </div>
+
                 <For
                     each=move || program().into_iter().enumerate()
                     key=|(index, _)| *index
-                    let:child
-                >
-
-                    {
-                        let (name, i_type) = code_to_name(child.1);
+                    children=move |(index, _)| {
+                        let value = create_memo(move |_| {
+                            program.with(|program| program[index])
+                        });
+                        let (name, i_type) = code_to_name(value());
                         view! {
                             <div class="bg-white grid place-items-center">
-                                {format!("{:02x}", 4 * child.0)}
+                                {format!("{:02x}", 4 * index)}
                             </div>
                             <div class="bg-white grid place-items-center font-mono">{name}</div>
-                            <div>{view_instruction(i_type, child.1)}</div>
+                            <div>{view_instruction(i_type, value())}</div>
                         }
                     }
+                />
 
-                </For>
             </div>
         </div>
     }
@@ -703,23 +853,40 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                                 memory
                                     .chunks(4)
                                     .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3]])
-                                    .take(33)
+                                    .take(64)
                                     .enumerate()
                                     .collect::<Vec<_>>()
                             })
                     }
 
                     key=|(index, _)| *index
-                    let:child
-                >
-                    <span class="w-12 bg-white text-center font-semibold border-r border-gray-900">
-                        {format!("{:02x}", 4 * child.0)}
-                    </span>
-                    <span class="w-8 bg-white text-center">{format!("{:02x}", child.1[0])}</span>
-                    <span class="w-8 bg-white text-center">{format!("{:02x}", child.1[1])}</span>
-                    <span class="w-8 bg-white text-center">{format!("{:02x}", child.1[2])}</span>
-                    <span class="w-8 bg-white text-center">{format!("{:02x}", child.1[3])}</span>
-                </For>
+                    children=move |(index, _)| {
+                        let value = create_memo(move |_| {
+                            memory
+                                .with(|memory| -> [u8; 4] {
+                                    memory[4 * index..4 * index + 4].try_into().unwrap()
+                                })
+                        });
+                        view! {
+                            <span class="w-12 bg-white text-center font-semibold border-r border-gray-900">
+                                {move || format!("{:02x}", 4 * index)}
+                            </span>
+                            <span class="w-8 bg-white text-center">
+                                {move || format!("{:02x}", value()[0])}
+                            </span>
+                            <span class="w-8 bg-white text-center">
+                                {move || format!("{:02x}", value()[1])}
+                            </span>
+                            <span class="w-8 bg-white text-center">
+                                {move || format!("{:02x}", value()[2])}
+                            </span>
+                            <span class="w-8 bg-white text-center">
+                                {move || format!("{:02x}", value()[3])}
+                            </span>
+                        }
+                    }
+                />
+
             </div>
         </div>
     }

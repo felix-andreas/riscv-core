@@ -7,6 +7,25 @@
   <link data-trunk rel="rust" data-wasm-opt="z" />
   <link data-trunk rel="tailwind-css" href="/tailwind.css" />
   <title>RISC-V</title>
+  <style>
+    circle.animation {
+      fill: transparent;
+      stroke: black;
+      stroke-width: 32px;
+      stroke-dasharray: 100.528;
+      stroke-dashoffset: 100.528;
+    }
+
+    @keyframes clock-animation {
+      0% {
+        stroke-dashoffset: 100.528;
+      }
+
+      100% {
+        stroke-dashoffset: 0;
+      }
+    }
+  </style>
 </head>
 
 <body></body>
