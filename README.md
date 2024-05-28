@@ -18,15 +18,19 @@ riscv32-none-elf-objdump -d fib.o
 
 ## RISC-V tests
 
-Download and compile tests from https://github.com/riscv/riscv-tests.
+Download and compile tests from https://github.com/riscv/riscv-tests. Or, run:
+
+```
+nix build .#riscv-tests
+```
 
 Then, run:
 
 ```
-cargo run -p riscv --example run_tests
+cargo run -p riscv --example run_tests -- <path/to/tests>
 ```
 
-to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass.
+where `<path/to/tests>` should be either `riscv-tests/isa` or `result`, depending on if you compilied the tests manually or with Nxi. The command runs all `rv32ui-p*` tests. All of them should pass.
 
 ## TODO
 

@@ -5,7 +5,19 @@ use {
 };
 
 fn main() {
-    for entry in glob::glob("riscv-tests/isa/rv32ui-p-*").unwrap() {
+    for entry in glob::glob(
+        Path::new(
+            std::env::args()
+                .nth(1)
+                .as_deref()
+                .unwrap_or("riscv-tests/isa"),
+        )
+        .join("rv32ui-p-*")
+        .to_str()
+        .unwrap(),
+    )
+    .unwrap()
+    {
         let path = entry.unwrap();
         if path.is_dir() || path.extension().is_some() {
             continue;

@@ -45,7 +45,13 @@
               (import inputs.rust-overlay)
             ];
           };
-          pkgsRiscv = pkgs.pkgsCross.riscv32-embedded.buildPackages;
+          pkgsRiscv = pkgs.pkgsCross.riscv64-embedded.buildPackages;
+          # HACK: requires different names for the executables
+          riscv-toolchain = with pkgs; (runCommand "riscv-toolchain" { } ''
+            mkdir -p $out/bin
+              ln -s ${pkgsRiscv.gcc}/bin/riscv64-none-elf-gcc $out/bin/riscv64-unknown-elf-gcc
+              ln -s ${pkgsRiscv.binutils}/bin/riscv64-none-elf-objdump $out/bin/riscv64-unknown-elf-objdump
+          '');
           rust-toolchain = pkgs.rust-bin.selectLatestNightlyWith
             (toolchain: toolchain.default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
@@ -103,19 +109,20 @@
               autoconf
               pkgsRiscv.gcc
               pkgsRiscv.binutils
+              riscv-toolchain
               # Python
               (python311.withPackages (p: with p; [ black httpx ipykernel ipython isort matplotlib numpy pytorch tqdm transformers ]))
             ];
 
             commands = [
               {
-                name = "riscv64-unknown-elf-gcc";
+                name = "riscv64-unknown-elf-gcc-old";
                 command = ''
                   ${pkgsRiscv.gcc}/bin/riscv64-none-elf-gcc "$@"
                 '';
               }
               {
-                name = "riscv64-unknown-elf-objdump";
+                name = "riscv64-unknown-elf-objdump-old";
                 command = ''
                   ${pkgsRiscv.binutils}/bin/riscv64-none-elf-objdump "$@"
                 '';
@@ -145,6 +152,38 @@
               cargoHash = "sha256-aACJ+lYNEU8FFBs158G1/JG8sc6Rq080PeKCMnwdpH0=";
             };
           });
+          riscv-tests =
+            let
+              src = pkgs.fetchFromGitHub {
+                owner = "riscv-software-src";
+                repo = "riscv-tests";
+                rev = "408e461da11e0b298c4b69e587729532787212f5";
+                fetchSubmodules = true;
+                sha256 = "sha256-fX9rDLRH0KCLHhWZ9cCZufsqY5wUzjRjDIP1visELiI=";
+              };
+            in
+            with pkgs; stdenv.mkDerivation {
+              name = "riscv-tests";
+              src = src;
+              nativeBuildInputs = [
+                gnumake
+                autoconf
+                riscv-toolchain
+              ];
+              configurePhase = ''
+                autoconf
+                ./configure
+              '';
+              buildPhase = ''
+                cd isa
+                make rv32ui
+              '';
+              installPhase = ''
+                mkdir $out
+                cp rv32ui-p-*[^dump] $out
+              '';
+              dontPatch = true;
+            };
           publish = with pkgs; writeShellApplication {
             name = "publish";
             runtimeInputs = [ wrangler ];
@@ -160,6 +199,7 @@
       packages = eachSystem (system: {
         default = (flake system).package;
         publish = (flake system).publish;
+        riscv-tests = (flake system).riscv-tests;
       });
     };
 }
