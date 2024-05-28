@@ -1,7 +1,8 @@
-use std::{fs::File, io::Read, path::Path};
-
-use riscv_core::{step, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC};
-use xmas_elf::program::SegmentData;
+use {
+    riscv::{step, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC},
+    std::{fs::File, io::Read, path::Path},
+    xmas_elf::program::SegmentData,
+};
 
 fn main() {
     for entry in glob::glob("riscv-tests/isa/rv32ui-p-*").unwrap() {
@@ -31,8 +32,8 @@ pub fn run(path: &std::path::Path, verbose: bool) {
     for i in 0.. {
         if verbose {
             let pc = registers[PC];
-            let code = riscv_core::utils::load_word(&memory, pc).unwrap();
-            let instruction = riscv_core::decode(code).unwrap();
+            let code = riscv::load_word(&memory, pc).unwrap();
+            let instruction = riscv::decode(code).unwrap();
 
             // Uncomment to dump registers for range of instructions
             // if (0x80000198..=0x800001a8).contains(&pc) {

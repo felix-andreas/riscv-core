@@ -1,12 +1,15 @@
-pub mod app;
 mod formats;
 mod instructions;
-pub mod utils;
+mod utils;
 
-use formats::{BType, IType, JType, RType, SType, UType};
-use instructions::Instruction;
-use utils::{dump_registers, sign_extend, MemoryError};
-use utils::{load_word, store_byte, store_half_word, store_word};
+pub use {
+    formats::{BType, IType, JType, RType, SType, UType},
+    instructions::Instruction,
+    utils::{
+        dump_registers, load_word, sign_extend, store_byte, store_half_word, store_word,
+        MemoryError, REGISTER_NAMES,
+    },
+};
 
 pub const PC: usize = 32;
 pub const MEMORY_SIZE: usize = 0x10000;

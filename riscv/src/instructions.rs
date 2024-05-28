@@ -1,6 +1,6 @@
 #![allow(clippy::upper_case_acronyms)]
 
-use crate::formats::*;
+use crate::formats::{BType, IType, JType, RType, SType, UType};
 
 #[derive(Debug)]
 pub enum Instruction {

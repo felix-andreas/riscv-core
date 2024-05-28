@@ -124,8 +124,10 @@
           };
           check = crateClippy;
           package = craneLib.buildTrunkPackage (commonArgs // {
-            pname = "riscv";
+            pname = "web";
             cargoArtifacts = crateClippy;
+            cargoExtraArgs = "--package=client";
+            trunkIndexPath = "web/index.html";
             src = fs.toSource {
               root = ./.;
               fileset = fs.unions ([

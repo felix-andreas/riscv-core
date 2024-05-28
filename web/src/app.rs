@@ -1,14 +1,13 @@
 #![allow(non_snake_case)]
 
-use std::time::Duration;
-
-use leptos::{leptos_dom::helpers::IntervalHandle, *};
-use leptos_meta::*;
-
-use crate::{
-    formats::{BType, IType, JType, RType, SType, UType},
-    utils::REGISTER_NAMES,
-    Error, Instruction, Memory, Registers, MEMORY_SIZE, MEMORY_START, PC,
+use {
+    leptos::{leptos_dom::helpers::IntervalHandle, *},
+    leptos_meta::*,
+    riscv::{
+        BType, Error, IType, Instruction, JType, Memory, RType, Registers, SType, UType,
+        MEMORY_SIZE, MEMORY_START, PC, REGISTER_NAMES,
+    },
+    std::time::Duration,
 };
 
 #[derive(Debug, Clone)]
@@ -100,8 +99,7 @@ pub fn App() -> impl IntoView {
                 .1
                 .iter()
                 .copied()
-                .map(u32::to_le_bytes)
-                .flatten()
+                .flat_map(u32::to_le_bytes)
                 .collect::<Vec<u8>>();
             for (m, p) in memory[..program.len()].iter_mut().zip(program) {
                 *m = p;
@@ -117,7 +115,7 @@ pub fn App() -> impl IntoView {
     let step = move || {
         leptos::batch(|| {
             update!(|registers, memory| {
-                let result = crate::step(registers, memory);
+                let result = riscv::step(registers, memory);
                 state.set(match result {
                     Ok(false) => State::Started,
                     Ok(true) => {
@@ -137,7 +135,7 @@ pub fn App() -> impl IntoView {
         RunningState::Idle => {
             running_state.set(RunningState::Running(
                 leptos::set_interval_with_handle(
-                    move || step(),
+                    step,
                     Duration::from_secs_f64(1.0 / frequency() as f64),
                 )
                 .unwrap(),
@@ -395,7 +393,7 @@ pub fn App() -> impl IntoView {
                                                         class="p-4 hover:bg-gray-100"
                                                         on:click=move |_| load(i)
                                                     >
-                                                        {format!("{}", x.0)}
+                                                        {x.0.to_string()}
                                                     </button>
                                                 }
                                             })
@@ -464,7 +462,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         (0..n)
             .filter_map(|i| {
                 let address = start() + 4 * i;
-                crate::utils::load_word(&memory(), address).ok()
+                riscv::load_word(&memory(), address).ok()
             })
             .collect()
     });
@@ -548,7 +546,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                                             REGISTER_NAMES[s_type.rs1() as usize].to_string(),
                                         ),
                                         ("f3", 3, format!("{funct3:03b}")),
-                                        ("imm", 5, format!("")),
+                                        ("imm", 5, String::new()),
                                         ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
@@ -566,7 +564,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                                             REGISTER_NAMES[b_type.rs1() as usize].to_string(),
                                         ),
                                         ("f3", 3, format!("{funct3:03b}")),
-                                        ("imm", 5, format!("")),
+                                        ("imm", 5, String::new()),
                                         ("opcode", 7, format!("{opcode:07b}")),
                                     ]
                                 }
@@ -968,7 +966,7 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
 // region: Utils
 
 fn code_to_name(code: u32) -> (&'static str, Option<InstType>) {
-    match crate::decode(code) {
+    match riscv::decode(code) {
         None => ("UNK", None),
         Some(instruction) => match instruction {
             Instruction::LUI(lui) => ("LUI", Some(InstType::UType(lui))),

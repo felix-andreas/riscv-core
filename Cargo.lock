@@ -959,15 +959,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "adad44e29e4c806119491a7f06f03de4d1af22c3a680dd47f1e6e179439d1f56"
 
 [[package]]
-name = "riscv-core"
+name = "riscv"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook",
- "console_log",
  "glob",
- "leptos",
- "leptos_meta",
- "log",
  "xmas-elf",
 ]
 
@@ -1468,6 +1463,18 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+]
+
+[[package]]
+name = "web"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "console_log",
+ "leptos",
+ "leptos_meta",
+ "log",
+ "riscv",
 ]
 
 [[package]]

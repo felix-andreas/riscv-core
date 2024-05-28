@@ -1,5 +1,6 @@
-use leptos::*;
-use riscv_core::app::*;
+mod app;
+
+use {app::App, leptos::*};
 
 pub fn main() {
     _ = console_log::init_with_level(log::Level::Debug);

@@ -5,6 +5,7 @@ A minimal RV32I RISC-V core implement in Rust. This is just a weekend project, b
 ## Usage
 
 ```
+cd web
 trunk serve
 ```
 
@@ -22,7 +23,7 @@ Download and compile tests from https://github.com/riscv/riscv-tests.
 Then, run:
 
 ```
-cargo run
+cargo run -p riscv --example run_tests
 ```
 
 to run all tests located at `riscv-tests/isa/rv32ui-p*`. All of them should pass.
