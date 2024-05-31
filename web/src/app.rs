@@ -148,9 +148,10 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
-        <div class="min-h-screen grid grid-rows-[auto_auto_1fr] bg-gray-50">
-            <div class="border border-b border-gray-200">
-                <div class="p-4 mx-auto max-w-screen-xl border-x border-gray-200 flex items-center">
+
+        <div class="min-h-screen bg-gray-200">
+            <div class="mx-auto max-w-fit py-4 grid gap-4">
+                <div class="p-4 flex items-center bg-white p-4 border-2 border-gray-900 shadow">
                     <div class="w-6"></div>
                     <div class="grow font-mono text-lg text-center">"RISC-V Exposed"</div>
                     <a href="https://github.com/felix-andreas/riscv-core" target="_blank">
@@ -168,266 +169,256 @@ pub fn App() -> impl IntoView {
                         </svg>
                     </a>
                 </div>
-            </div>
 
-            <div class="">
-                <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
-                    <div class="p-8 grid gap-4">
-                        <div class="grid gap-4">
-                            <div class="grid gap-4 items-start grid-cols-[3fr_2fr]">
-                                <div class="p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
-                                    <Program memory=memory pc=pc/>
-                                </div>
-                                <div class="p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
-                                    <Registers registers=registers/>
-                                </div>
-                            </div>
-                            <Memory memory=memory/>
-                        </div>
-
-                        <div class="flex gap-4 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
-                            <button
-                                class=move || {
-                                    format!(
-                                        "w-28 py-1 font-medium text-lg text-white disabled:opacity-50 flex justify-center items-center gap-2 {}",
-                                        match running_state() {
-                                            RunningState::Idle => "bg-green-600 hover:bg-green-500",
-                                            RunningState::Running(_) => "bg-red-600 hover:bg-red-500",
-                                        },
-                                    )
-                                }
-
-                                disabled=move || {
-                                    matches!(state(), State::Finished | State::Errored(_))
-                                }
-
-                                on:click=press_run_button
-                            >
-                                {move || match running_state() {
-                                    RunningState::Idle => {
-                                        view! {
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 32 32"
-                                            >
-                                                <path
-                                                    fill="currentColor"
-                                                    d="M7 28a1 1 0 0 1-1-1V5a1 1 0 0 1 1.482-.876l20 11a1 1 0 0 1 0 1.752l-20 11A1 1 0 0 1 7 28"
-                                                ></path>
-                                            </svg>
-                                            Run
-                                        }
-                                    }
-                                    RunningState::Running(_) => {
-                                        view! {
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 32 32"
-                                            >
-                                                <path
-                                                    fill="currentColor"
-                                                    d="M24 6H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2"
-                                                ></path>
-                                            </svg>
-                                            Stop
-                                        }
-                                    }
-                                }}
-
-                            </button>
-                            <button
-                                class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3"
-                                on:click=move |_| step()
-                                disabled=move || {
-                                    matches!(state(), State::Finished | State::Errored(_))
-                                }
-                            >
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 32 32"
-                                >
-                                    <path
-                                        fill="currentColor"
-                                        d="m18 6l-1.43 1.393L24.15 15H4v2h20.15l-7.58 7.573L18 26l10-10z"
-                                    ></path>
-                                </svg>
-                                Step
-                            </button>
-                            <button
-                                class="px-5 py-2 bg-black font-medium text-lg text-white disabled:opacity-15 flex items-center gap-3"
-                                on:click=move |_| reset()
-                                disabled=move || matches!(state(), State::Fresh)
-                            >
-
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 32 32"
-                                >
-                                    <path
-                                        fill="currentColor"
-                                        d="M18 28A12 12 0 1 0 6 16v6.2l-3.6-3.6L1 20l6 6l6-6l-1.4-1.4L8 22.2V16a10 10 0 1 1 10 10Z"
-                                    ></path>
-                                </svg>
-                                "Reset"
-                            </button>
-
-                            <div class="ml-auto grid place-items-center opacity-15">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 32 32"
-                                    class="rounded-full transform -rotate-90"
-                                >
-                                    <circle
-                                        style=move || {
-                                            match running_state() {
-                                                RunningState::Idle => "".into(),
-                                                RunningState::Running(_) => {
-                                                    format!(
-                                                        "animation: clock-animation {}s linear infinite;",
-                                                        1.0 / frequency() as f64,
-                                                    )
-                                                }
-                                            }
-                                        }
-
-                                        class="animation"
-                                        cx="16"
-                                        cy="16"
-                                        r="16"
-                                    ></circle>
-                                </svg>
-                            </div>
-
-                            <div class="relative">
-                                <button
-                                    popovertarget="programs-frequency"
-                                    class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
-                                    on:click=move |_| {}
-                                >
-                                    {move || format!("{} Hz", frequency())}
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 32 32"
-                                    >
-                                        <path
-                                            fill="currentColor"
-                                            d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
-                                        ></path>
-                                    </svg>
-                                </button>
-                                <div
-                                    id="programs-frequency"
-                                    popover
-                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-2xl"
-                                >
-                                    <div class="grid">
-                                        <div class="text-center bg-black text-white px-24 py-6 font-semibold">
-                                            "CPU frequency"
-                                        </div>
-                                        {frequencies
-                                            .iter()
-                                            .enumerate()
-                                            .map(|(i, x)| {
-                                                view! {
-                                                    <button
-                                                        class="p-4 hover:bg-gray-100"
-                                                        on:click=move |_| frequency.set(frequencies[i])
-                                                    >
-                                                        {format!("{x} Hz")}
-                                                    </button>
-                                                }
-                                            })
-                                            .collect_view()}
-
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="relative">
-                                <button
-                                    popovertarget="programs-dropdown"
-                                    class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
-                                    on:click=move |_| {}
-                                >
-                                    {move || programs[selected_program()].0}
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="24"
-                                        height="24"
-                                        viewBox="0 0 32 32"
-                                    >
-                                        <path
-                                            fill="currentColor"
-                                            d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
-                                        ></path>
-                                    </svg>
-                                </button>
-                                <div
-                                    id="programs-dropdown"
-                                    popover
-                                    class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
-                                >
-                                    <div class="grid">
-                                        <div class="text-center bg-black text-white px-24 py-6 font-semibold">
-                                            "Select a program"
-                                        </div>
-                                        {programs
-                                            .iter()
-                                            .enumerate()
-                                            .map(|(i, x)| {
-                                                view! {
-                                                    <button
-                                                        class="p-4 hover:bg-gray-100"
-                                                        on:click=move |_| load(i)
-                                                    >
-                                                        {x.0.to_string()}
-                                                    </button>
-                                                }
-                                            })
-                                            .collect_view()}
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Show when=move || !message().is_empty()>
-                            <div class="p-8 border bg-red-50 border-red-200 text-red-900 flex items-center gap-2">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="24"
-                                    height="24"
-                                    viewBox="0 0 32 32"
-                                >
-                                    <path
-                                        fill="currentColor"
-                                        d="M2 16A14 14 0 1 0 16 2A14 14 0 0 0 2 16m23.15 7.75L8.25 6.85a12 12 0 0 1 16.9 16.9M8.24 25.16a12 12 0 0 1-1.4-16.89l16.89 16.89a12 12 0 0 1-15.49 0"
-                                    ></path>
-                                </svg>
-                                <div>{message}</div>
-                            </div>
-                        </Show>
+                <div class="grid gap-4 items-start grid-cols-[3fr_2fr]">
+                    <div class="bg-white p-4 border-2 border-gray-900 shadow">
+                        <Program memory=memory pc=pc/>
+                    </div>
+                    <div class="bg-white p-4 border-2 border-gray-900 shadow">
+                        <Registers registers=registers/>
                     </div>
                 </div>
-            </div>
+                <div class="bg-white p-4 border-2 border-gray-900 shadow">
+                    <Memory memory=memory/>
+                </div>
 
-            <div class="grow border border-t border-gray-200">
-                <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid justify-center">
-                    <div class="py-8 opacity-35 text-xs">
-                        "RISC-V Exposed © 2024 Felix Andreas."
+                <div class="bg-white flex gap-4 p-4 border-2 border-gray-900 shadow">
+                    <button
+                        class=move || {
+                            format!(
+                                "w-28 py-1 font-medium text-lg text-white disabled:opacity-50 flex justify-center items-center gap-2 {}",
+                                match running_state() {
+                                    RunningState::Idle => "bg-green-600 hover:bg-green-500",
+                                    RunningState::Running(_) => "bg-red-600 hover:bg-red-500",
+                                },
+                            )
+                        }
+
+                        disabled=move || { matches!(state(), State::Finished | State::Errored(_)) }
+
+                        on:click=press_run_button
+                    >
+                        {move || match running_state() {
+                            RunningState::Idle => {
+                                view! {
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 32 32"
+                                    >
+                                        <path
+                                            fill="currentColor"
+                                            d="M7 28a1 1 0 0 1-1-1V5a1 1 0 0 1 1.482-.876l20 11a1 1 0 0 1 0 1.752l-20 11A1 1 0 0 1 7 28"
+                                        ></path>
+                                    </svg>
+                                    Run
+                                }
+                            }
+                            RunningState::Running(_) => {
+                                view! {
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 32 32"
+                                    >
+                                        <path
+                                            fill="currentColor"
+                                            d="M24 6H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2"
+                                        ></path>
+                                    </svg>
+                                    Stop
+                                }
+                            }
+                        }}
+
+                    </button>
+                    <button
+                        class="px-5 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3"
+                        on:click=move |_| step()
+                        disabled=move || { matches!(state(), State::Finished | State::Errored(_)) }
+                    >
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 32 32"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="m18 6l-1.43 1.393L24.15 15H4v2h20.15l-7.58 7.573L18 26l10-10z"
+                            ></path>
+                        </svg>
+                        Step
+                    </button>
+                    <button
+                        class="px-5 py-2 bg-black font-medium text-lg text-white disabled:opacity-15 flex items-center gap-3"
+                        on:click=move |_| reset()
+                        disabled=move || matches!(state(), State::Fresh)
+                    >
+
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 32 32"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M18 28A12 12 0 1 0 6 16v6.2l-3.6-3.6L1 20l6 6l6-6l-1.4-1.4L8 22.2V16a10 10 0 1 1 10 10Z"
+                            ></path>
+                        </svg>
+                        "Reset"
+                    </button>
+
+                    <div class="ml-auto grid place-items-center opacity-15">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="20"
+                            height="20"
+                            viewBox="0 0 32 32"
+                            class="rounded-full transform -rotate-90"
+                        >
+                            <circle
+                                style=move || {
+                                    match running_state() {
+                                        RunningState::Idle => "".into(),
+                                        RunningState::Running(_) => {
+                                            format!(
+                                                "animation: clock-animation {}s linear infinite;",
+                                                1.0 / frequency() as f64,
+                                            )
+                                        }
+                                    }
+                                }
+
+                                class="animation"
+                                cx="16"
+                                cy="16"
+                                r="16"
+                            ></circle>
+                        </svg>
+                    </div>
+
+                    <div class="relative">
+                        <button
+                            popovertarget="programs-frequency"
+                            class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
+                            on:click=move |_| {}
+                        >
+                            {move || format!("{} Hz", frequency())}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 32 32"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <div
+                            id="programs-frequency"
+                            popover
+                            class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-2xl"
+                        >
+                            <div class="grid">
+                                <div class="text-center bg-black text-white px-24 py-6 font-semibold">
+                                    "CPU frequency"
+                                </div>
+                                {frequencies
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, x)| {
+                                        view! {
+                                            <button
+                                                class="p-4 hover:bg-gray-100"
+                                                on:click=move |_| frequency.set(frequencies[i])
+                                            >
+                                                {format!("{x} Hz")}
+                                            </button>
+                                        }
+                                    })
+                                    .collect_view()}
+
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <button
+                            popovertarget="programs-dropdown"
+                            class="pl-7 pr-4 py-2 border-2 border-gray-900 font-medium text-lg disabled:opacity-50 flex items-center gap-3 hover:bg-gray-50"
+                            on:click=move |_| {}
+                        >
+                            {move || programs[selected_program()].0}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 32 32"
+                            >
+                                <path
+                                    fill="currentColor"
+                                    d="M16 22L6 12l1.4-1.4l8.6 8.6l8.6-8.6L26 12z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <div
+                            id="programs-dropdown"
+                            popover
+                            class="p-0 top-0 right-0 bg-white border-2 border-gray-900 shadow-lg"
+                        >
+                            <div class="grid">
+                                <div class="text-center bg-black text-white px-24 py-6 font-semibold">
+                                    "Select a program"
+                                </div>
+                                {programs
+                                    .iter()
+                                    .enumerate()
+                                    .map(|(i, x)| {
+                                        view! {
+                                            <button
+                                                class="p-4 hover:bg-gray-100"
+                                                on:click=move |_| load(i)
+                                            >
+                                                {x.0.to_string()}
+                                            </button>
+                                        }
+                                    })
+                                    .collect_view()}
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <Show when=move || !message().is_empty()>
+                    <div class="p-8 border bg-red-50 border-red-200 text-red-900 flex items-center gap-2">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="24"
+                            height="24"
+                            viewBox="0 0 32 32"
+                        >
+                            <path
+                                fill="currentColor"
+                                d="M2 16A14 14 0 1 0 16 2A14 14 0 0 0 2 16m23.15 7.75L8.25 6.85a12 12 0 0 1 16.9 16.9M8.24 25.16a12 12 0 0 1-1.4-16.89l16.89 16.89a12 12 0 0 1-15.49 0"
+                            ></path>
+                        </svg>
+                        <div>{message}</div>
+                    </div>
+                </Show>
+
+                <div class="grow">
+                    <div class="h-full mx-auto max-w-screen-xl grid justify-center">
+                        <div class="py-8 opacity-50 text-sm">
+                            "RISC-V Exposed © 2024 Felix Andreas."
+                        </div>
                     </div>
                 </div>
             </div>
@@ -473,7 +464,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
         let funct7 = code >> 25 & 0b111_1111;
         view! {
             <div
-                class="grid bg-gray-200 gap-px"
+                class="grid"
                 style="grid-template-columns: repeat(32, 1fr); height: 52px; width: 415px;"
             >
                 <Show when=move || { matches!(view_state(), View::Binary) }>
@@ -848,7 +839,7 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
     };
 
     view! {
-        <div class="grid gap-2 p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
+        <div class="grid gap-2">
             <div class="text-center">"RAM"</div>
             <div class="grid grid-cols-3 border-2 border-gray-900 overflow-hidden">
                 {[ViewState::Bytes, ViewState::U32, ViewState::I32]
