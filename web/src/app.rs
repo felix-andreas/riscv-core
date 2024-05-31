@@ -174,7 +174,7 @@ pub fn App() -> impl IntoView {
                 <div class="h-full mx-auto max-w-screen-xl border-x border-gray-200 grid place-items-center">
                     <div class="p-8 grid gap-4">
                         <div class="grid gap-4">
-                            <div class="grid gap-4 grid-cols-2 items-start">
+                            <div class="grid gap-4 items-start grid-cols-[3fr_2fr]">
                                 <div class="p-4 bg-white ring-1 ring-gray-500/5 shadow-sm">
                                     <Program memory=memory pc=pc/>
                                 </div>
@@ -662,7 +662,7 @@ pub fn Program(memory: RwSignal<Memory>, pc: Signal<u32>) -> impl IntoView {
                 <div
                     class="absolute left-0 right-0 ring-4 ring-blue-300 transition-all pointer-events-none"
                     style=move || {
-                        format!("height: 52px; top: {}px;", 41 + 50 * ((pc() - start()) / 4))
+                        format!("height: 52px; top: {}px;", 41 + 53 * ((pc() - start()) / 4))
                     }
                 >
                 </div>
@@ -710,19 +710,30 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
     }
     pub fn view_register(word: u32, view_state: ViewState) -> impl IntoView {
         match view_state {
-            ViewState::Bytes => view_word(word).into_view(),
+            ViewState::Bytes => {
+                let a = word & 0xff;
+                let b = (word >> 8) & 0xff;
+                let c = (word >> 16) & 0xff;
+                let d = (word >> 24) & 0xff;
+                view! {
+                    <div class="grid gap-x-px grid-cols-4 place-items-center bg-gray-900">
+                        <div class="w-8 bg-white text-center">{format!("{a:02x}")}</div>
+                        <div class="w-8 bg-white text-center">{format!("{b:02x}")}</div>
+                        <div class="w-8 bg-white text-center">{format!("{c:02x}")}</div>
+                        <div class="w-8 bg-white text-center">{format!("{d:02x}")}</div>
+                    </div>
+                }
+            }
             ViewState::U32 => view! {
                 <div class="grid place-items-center" style="width: 131px;">
                     {move || format!("{}", word)}
                 </div>
-            }
-            .into_view(),
+            },
             ViewState::I32 => view! {
                 <div class="grid place-items-center" style="width: 131px;">
                     {move || format!("{}", i32::from_ne_bytes(word.to_ne_bytes()))}
                 </div>
-            }
-            .into_view(),
+            },
         }
     }
     let view_state = RwSignal::new(ViewState::Bytes);
@@ -759,18 +770,20 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                     })}
 
             </div>
-            <div class="grid grid-cols-2">
+            <div class="grid grid-cols-2 gap-2">
                 {(0..2)
                     .map(|i| {
                         view! {
-                            <div class="grid gap-y-px border-2 border-gray-900 bg-gray-900">
-                                <div class="grid grid-cols-[4rem_auto] bg-gray-100 font-medium">
+                            <div class="grid gap-y-px bg-gray-900  border-2 border-gray-900">
+                                <div class="grid grid-cols-[1fr_auto] bg-gray-100 font-medium">
                                     <div class="py-2 text-center border-r-2 border-gray-900 ">
                                         "reg"
                                     </div>
-                                    <div class="py-2 text-center">"value"</div>
+                                    <div class="py-2 text-center" style="width: 131px;">
+                                        "value"
+                                    </div>
                                 </div>
-                                <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
+                                <div class="grid grid-cols-[1fr_auto] bg-white font-mono">
                                     <p class=" text-right px-2 border-r-2 border-gray-900 font-semibold">
                                         {move || if i == 0 { "pc" } else { "-" }}
                                     </p>
@@ -778,7 +791,7 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                                         if i == 0 {
                                             view_register(registers()[PC], view_state()).into_view()
                                         } else {
-                                            "".into_view()
+                                            view! { <div style="width: 131px;"></div> }.into_view()
                                         }
                                     }}
 
@@ -793,7 +806,7 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                                             registers.with(|registers| registers[index])
                                         });
                                         view! {
-                                            <div class="grid grid-cols-[4rem_auto] bg-white font-mono">
+                                            <div class="grid grid-cols-[1fr_auto] bg-white font-mono">
                                                 <p class="text-right px-2 border-r-2 border-gray-900 font-semibold">
                                                     {REGISTER_NAMES[index]}
                                                 </p>
@@ -809,21 +822,6 @@ pub fn Registers(registers: RwSignal<Registers>) -> impl IntoView {
                     .collect_view()}
 
             </div>
-        </div>
-    }
-}
-
-pub fn view_word(word: u32) -> impl IntoView {
-    let a = word & 0xff;
-    let b = (word >> 8) & 0xff;
-    let c = (word >> 16) & 0xff;
-    let d = (word >> 24) & 0xff;
-    view! {
-        <div class="grid gap-x-px grid-cols-4 place-items-center bg-gray-900">
-            <div class="w-8 bg-white text-center">{format!("{a:02x}")}</div>
-            <div class="w-8 bg-white text-center">{format!("{b:02x}")}</div>
-            <div class="w-8 bg-white text-center">{format!("{c:02x}")}</div>
-            <div class="w-8 bg-white text-center">{format!("{d:02x}")}</div>
         </div>
     }
 }
@@ -882,14 +880,21 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
 
             </div>
             <div
-                class="grid gap-px bg-gray-900 border-2 border-gray-900 font-mono"
-                style=move || format!("grid-template-columns: 4rem repeat({}, 1fr);", n_cols())
+                class="grid border-2 border-gray-900 font-mono"
+                style=move || {
+                    format!(
+                        "grid-template-columns: auto repeat({}, {}px);",
+                        n_cols(),
+                        28 * 32 / n_cols(),
+                    )
+                }
             >
+
                 <span class="py-2 font-sans font-medium bg-gray-100 text-center border-r border-gray-900">
                     "addr"
                 </span>
                 <span
-                    class="py-2 font-sans font-medium bg-gray-100 text-center"
+                    class="py-2 font-sans font-medium bg-gray-100 text-center border-l border-gray-900"
                     style=move || format!("grid-column: span {}", n_cols())
                 >
                     "value"
@@ -915,7 +920,7 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                     // HACK: we wrap in view make animation play on re-render
                     children=move |row| {
                         view! {
-                            <span class="bg-white text-right pr-2 font-semibold border-r border-gray-900">
+                            <span class="bg-white text-right pr-2 font-semibold border-r border-t border-gray-900">
                                 {move || format!("{:02x}", BYTES_PER_ROW * row)}
                             </span>
                             <For
@@ -948,8 +953,11 @@ pub fn Memory(memory: RwSignal<Memory>) -> impl IntoView {
                                     });
                                     move || {
                                         html::span()
+                                            .style("column-span", 4)
                                             .style("animation", "1200ms appear")
-                                            .classes("text-center transition-all bg-white")
+                                            .classes(
+                                                "h-7 grid place-items-center text-center transition-all bg-white border-t border-l border-gray-900",
+                                            )
                                             .child(value())
                                     }
                                 }
