@@ -110,8 +110,6 @@
               pkgsRiscv.gcc
               pkgsRiscv.binutils
               riscv-toolchain
-              # Python
-              (python311.withPackages (p: with p; [ black httpx ipykernel ipython isort matplotlib numpy pytorch tqdm transformers ]))
             ];
 
             commands = [
@@ -133,8 +131,14 @@
           package = craneLib.buildTrunkPackage (commonArgs // {
             pname = "web";
             cargoArtifacts = crateClippy;
-            cargoExtraArgs = "--package=client";
             trunkIndexPath = "web/index.html";
+            # note: we must override buildPhasecommand, otherwise it doesn't find tailwind.config.js because trunk build is execute at top level
+            # see here: https://github.com/ipetkov/crane/blob/480dff0be03dac0e51a8dfc26e882b0d123a450e/lib/buildTrunkPackage.nix
+            buildPhaseCommand = ''
+              cd web
+              trunk build --release
+              cd ..
+            '';
             src = fs.toSource {
               root = ./.;
               fileset = fs.unions ([
