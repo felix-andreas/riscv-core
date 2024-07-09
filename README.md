@@ -1,20 +1,6 @@
 # RISC-V core
 
-A minimal RV32I RISC-V core implement in Rust. This is just a weekend project, but some tests actually pass!
-
-## Usage
-
-```
-cd web
-trunk serve
-```
-
-## Compile programs
-
-```
-riscv32-none-elf-gcc -march=rv32i -mabi=ilp32 -c fib.c
-riscv32-none-elf-objdump -d fib.o
-```
+A minimal RV32I RISC-V core implement in Rust. This is just a weekend project, but all `rv32ui` tests actually pass!
 
 ## RISC-V tests
 
@@ -30,9 +16,27 @@ Then, run:
 cargo run -p riscv --example run_tests -- <path/to/tests>
 ```
 
-where `<path/to/tests>` should be either `riscv-tests/isa` or `result`, depending on if you compilied the tests manually or with Nxi. The command runs all `rv32ui-p*` tests. All of them should pass.
+where `<path/to/tests>` should be either `riscv-tests/isa` or `result`, depending on if you compilied the tests manually or with Nix. The command runs all `rv32ui-p*` tests. All of them should pass.
 
-## TODO
+## Visualization (WIP)
+
+Currently working on a visualization. You can see a work in progress version at: https://riscv.felixandreas.me/
+
+### Usage
+
+```
+cd web
+trunk serve
+```
+
+### Compile programs
+
+```
+riscv32-none-elf-gcc -march=rv32i -mabi=ilp32 -c fib.c
+riscv32-none-elf-objdump -d fib.o
+```
+
+### TODO
 
 * Fix program
 * animate change
